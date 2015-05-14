@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Reactor Designer (webgl)</title>
+
+        <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.4/themes/ui-darkness/jquery-ui.css">
+        <link href="css/reactor.css" rel="stylesheet">
+
+
+        <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script>
+
+        <script src="js/structures.js"></script>
+        <script src="js/ui.js"></script>
+
+        <script src="js/webgl-utils.js"></script>
+        <script>
+            "use strict";
+
+            $(function() {
+                // Get A WebGL context
+                var canvas = document.getElementById("canvas");
+
+                var gl = getWebGLContext(canvas);
+                if (!gl) {
+                  return;
+                }
+                
+                //var gl = canvas.getContext("experimental-webgl");
+
+                // setup a GLSL program
+                var program = createProgramFromScripts(gl, ["2d-vertex-shader", "2d-fragment-shader"]);
+                gl.useProgram(program);
+
+                // look up where the vertex data needs to go.
+                var positionLocation = gl.getAttribLocation(program, "a_position");
+
+                // set the resolution
+                var resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+                gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+
+                // Create a buffer and put a single clipspace rectangle in
+                // it (2 triangles)
+                var buffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                    0, 0,
+                    400, 0,
+                    400, 300,
+                    0, 0,
+                    400, 300,
+                    0, 300]), gl.STATIC_DRAW);
+                gl.enableVertexAttribArray(positionLocation);
+                gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+                // draw
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+            });
+        </script>
+        <script id="2d-vertex-shader" type="x-shader/x-vertex">
+            attribute vec2 a_position;
+
+            uniform vec2 u_resolution;
+
+            void main() {
+               // convert the rectangle from pixels to 0.0 to 1.0
+               vec2 zeroToOne = a_position / u_resolution;
+
+               // convert from 0->1 to 0->2
+               vec2 zeroToTwo = zeroToOne * 2.0;
+
+               // convert from 0->2 to -1->+1 (clipspace)
+               vec2 clipSpace = zeroToTwo - 1.0;
+
+               gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+            }
+        </script>
+
+        <script id="2d-fragment-shader" type="x-shader/x-fragment">
+            void main() {
+              gl_FragColor = vec4(1, 0, 0, 1);  // green
+            }
+        </script>
+    </head>
+    <body>
+        <canvas id="canvas" width="400" height="300"></canvas>
+    </body>
+</html>
