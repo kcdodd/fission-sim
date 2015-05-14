@@ -1,12 +1,17 @@
 "use strict";
 
 /**
+ * @typedef {Object} Float2DInput
+ * @property {number} [num_i] number of rows
+ * @property {number} [num_j] number of columns
+ */
+ /**
+  * @typedef {Object} Array2D
+  */
+/**
  * Constructor for an 2D array object
- * 
- * @param input {
- num_i:
- num_j:
- * }
+ *
+ * @param {Float2DInput} input
  * @returns {Array2D}
  */
 function Float2D(input)
@@ -42,8 +47,8 @@ function Float2D(input)
     output.arr = new Float32Array(num_total);
 
     /**
-     * 
-     * @param {type} i 
+     *
+     * @param {type} i
      * @param {type} j
      * @returns {Array}
      */
@@ -55,7 +60,7 @@ function Float2D(input)
     };
 
     /**
-     * 
+     *
      * @param {type} i
      * @param {type} j
      * @param {type} value
@@ -70,7 +75,7 @@ function Float2D(input)
 
     /**
      * Copies the contents of another array into this one.
-     * 
+     *
      * @param {type} other
      * @returns {undefined}
      */
@@ -130,21 +135,21 @@ function Float2D(input)
     };
 
     /**
-     * A general functional that can take scalars and other arrays, and computes 
+     * A general functional that can take scalars and other arrays, and computes
      * the elememts of this array.
-     * 
+     *
      * The first argument must be a text string which specifies the function expression
      * in reverse polish notation. It recognizes the binary operators +,-,*,/,and ^
      * E.G. "as*a+" multiplies a scalar and an array, and adds it to another array
-     * 
+     *
      * The rest of the arguments are the inputs to the function in the same order
      * they appear in the RPN expression. Only arrays and scalars are recognized, and
      * must be specified in the expression since arrays are attemped to be indexed,
      * while scalars are not.
-     * 
+     *
      * All operations between two arrays are assumed to be element wise. This does
      * not perform any kind of matrix multiplication operation
-     * 
+     *
      * @returns {undefined}
      */
     output.calc_rpn = function()
@@ -241,7 +246,7 @@ function Float2D(input)
 
     /**
      * Multiplies every element in the array by a number
-     * 
+     *
      * @param {type} s
      * @param {type} min_i
      * @param {type} min_j
@@ -303,9 +308,9 @@ function Float2D(input)
     };
 
     /**
-     * Computes a linear combination of two other arrays, and stores the result in 
+     * Computes a linear combination of two other arrays, and stores the result in
      * this array
-     * 
+     *
      * @param {type} s1
      * @param {type} a1
      * @param {type} s2
@@ -369,9 +374,9 @@ function Float2D(input)
     };
 
     /**
-     * Computes the convolution of 3x3 kernel with another array and stores the result 
+     * Computes the convolution of 3x3 kernel with another array and stores the result
      * in this array
-     * 
+     *
      * @param {type} kernel 3x3 array
      * @param {type} other array to perform convolution on
      * @param {type} min_i optional to specify to perform convolution on subset
@@ -759,11 +764,11 @@ function List1D(input)
 
 
 /**
- * 
+ *
  * @param {type} input
  * {
  *     newObject : function(),
- *     num_i: #, 
+ *     num_i: #,
  *     num_j: #
  * }
  * @returns {List2D}
@@ -825,10 +830,10 @@ function List2D(input)
 
 
 /**
- * 
+ *
  * @param {type} input structure
  {
- num_blocks_i : #, // number 
+ num_blocks_i : #, // number
  num_blocks_j : #,
  cells_per_block : #,
  num_fields : #
@@ -976,14 +981,14 @@ function Cellblock2D(input)
 ;
 
 /**
- * 
+ *
  * @param {type} input structure
  {
  fast_scattering: ,
  thermal_scattering: ,
  moderation: ,
- fast_absorption:, 
- thermal_absorption:, 
+ fast_absorption:,
+ thermal_absorption:,
  fast_fission: ,
  thermal_fission: ,
  neutrons_per_fission: ,
@@ -992,7 +997,7 @@ function Cellblock2D(input)
  fission_energy: ,
  conductivity: ,
  specific_heat: ,
- cooling_rate: 
+ cooling_rate:
  }
  * @returns {Cellblock2D}
  */

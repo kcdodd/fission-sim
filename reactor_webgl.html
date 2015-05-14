@@ -14,24 +14,25 @@
         <script src="js/structures.js"></script>
         <script src="js/ui.js"></script>
 
-        <script src="js/webgl-utils.js"></script>
+        <script src="js/my_webgl.js"></script>
         <script>
             "use strict";
 
             $(function() {
                 // Get A WebGL context
-                var canvas = document.getElementById("canvas");
 
-                var gl = getWebGLContext(canvas);
-                if (!gl) {
-                  return;
-                }
-                
-                //var gl = canvas.getContext("experimental-webgl");
+                var my = WebGL.make("canvas");
 
-                // setup a GLSL program
-                var program = createProgramFromScripts(gl, ["2d-vertex-shader", "2d-fragment-shader"]);
-                gl.useProgram(program);
+                var shaderScript = document.getElementById("2d-vertex-shader");
+                my.addShader(shaderScript.type, shaderScript.text);
+
+                shaderScript = document.getElementById("2d-fragment-shader");
+                my.addShader(shaderScript.type, shaderScript.text);
+
+                my.linkProgram();
+
+                var gl = my.gl;
+                var program = my.program;
 
                 // look up where the vertex data needs to go.
                 var positionLocation = gl.getAttribLocation(program, "a_position");
@@ -56,6 +57,9 @@
 
                 // draw
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+                gl.getExtension("gl.OES_texture_float");
+
             });
         </script>
         <script id="2d-vertex-shader" type="x-shader/x-vertex">
