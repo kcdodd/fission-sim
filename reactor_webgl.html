@@ -34,6 +34,8 @@
                 var gl = my.gl;
                 var program = my.program;
 
+                my.enableFloatTexture();
+
                 // look up where the vertex data needs to go.
                 var positionLocation = gl.getAttribLocation(program, "a_position");
 
@@ -58,7 +60,6 @@
                 // draw
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-                gl.getExtension("gl.OES_texture_float");
 
             });
         </script>
