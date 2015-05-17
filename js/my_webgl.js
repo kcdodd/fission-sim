@@ -40,63 +40,46 @@ var WebGL = {
             }
         });
 
+        out.linkProgram = function(spec) {
+            var error;
+            var compiled
 
-        var shaders = [];
+            var vshader = gl.createShader(gl.VERTEX_SHADER);
 
-        out.addShader = function(type, source) {
-            // compile shader sources
+            gl.shaderSource(vshader, spec.vertexShaderSource);
 
-            var shader;
+            gl.compileShader(vshader);
 
-            if (type === "vertex" || type === "x-shader/x-vertex") {
-
-                shader = gl.createShader(gl.VERTEX_SHADER);
-
-            }else if (type === "fragment" || type === "x-shader/x-fragment") {
-
-                shader = gl.createShader(gl.FRAGMENT_SHADER);
-
-            }else{
-                throw new Error("Shader type " + type + " undefined.");
-            }
-
-            gl.shaderSource(shader, source);
-
-            gl.compileShader(shader);
-
-            var compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+            compiled = gl.getShaderParameter(vshader, gl.COMPILE_STATUS);
 
             if (!compiled) {
 
-              var error = gl.getShaderInfoLog(shader);
-              gl.deleteShader(shader);
+              error = gl.getShaderInfoLog(vshader);
+              gl.deleteShader(vshader);
 
-              throw new Error("Shader compilation failed: " + error);
+              throw new Error("Vertex shader compilation failed: " + error);
             }
 
-            shaders.push(shader);
-        };
+            var fshader = gl.createShader(gl.FRAGMENT_SHADER);;
 
-        var program = null;
+            gl.shaderSource(fshader, spec.fragmentShaderSource);
 
-        Object.defineProperty(out, 'program', {
-            configurable: true,
-            get: function() {
-                return program;
-            }
-        });
+            gl.compileShader(fshader);
 
-        out.linkProgram = function() {
+            compiled = gl.getShaderParameter(fshader, gl.COMPILE_STATUS);
 
-            if (program) {
-                gl.deleteProgram(program);
+            if (!compiled) {
+
+              error = gl.getShaderInfoLog(fshader);
+              gl.deleteShader(fshader);
+
+              throw new Error("Fragment shader compilation failed: " + error);
             }
 
-            program = gl.createProgram();
+            var program = gl.createProgram();
 
-            shaders.forEach(function(shader) {
-                gl.attachShader(program, shader);
-            });
+            gl.attachShader(program, vshader);
+            gl.attachShader(program, fshader);
 
             gl.linkProgram(program);
 
@@ -108,13 +91,108 @@ var WebGL = {
 
                 gl.deleteProgram(program);
 
-                program = null;
-
                 throw new Error("Program linking failed: " + error);
             }
 
-            gl.useProgram(program);
+            var prog = {
+                program : program
+            };
+
+            prog.use = function() {
+                gl.useProgram(program);
+            };
+
+
+            prog.addUniformFloat = function(uniform_name, value) {
+                gl.useProgram(program);
+
+                var uniformLocation = gl.getUniformLocation(program, uniform_name);
+
+                if (uniformLocation === null) {
+                    throw new Error("Could not get uniform: " + uniform_name);
+                }
+
+                if (typeof value === 'number') {
+
+                    gl.uniform1f(uniformLocation, value);
+
+                }else if (Array.isArray(value)){
+                    if (value.length === 2) {
+
+                        gl.uniform2f(uniformLocation, value[0], value[1]);
+
+                    }else if (value.length === 3) {
+
+                        gl.uniform3f(uniformLocation, value[0], value[1], value[2]);
+
+                    }else if (value.length === 4) {
+
+                        gl.uniform4f(uniformLocation, value[0], value[1], value[2], value[3]);
+                    }else{
+                        throw new Error("Cannot add uniform value: " + value);
+                    }
+                }else{
+                    throw new Error("Cannot add uniform value: " + value);
+                }
+
+                gl.useProgram(null);
+            };
+
+            prog.drawTriangles = function(first, count) {
+                gl.useProgram(program);
+
+                gl.drawArrays(gl.TRIANGLES, first, count);
+
+                gl.useProgram(null);
+            };
+
+            return prog;
         };
+
+        out.addArrayFloat = function(array) {
+            var numComponents = array[0].length;
+
+            var monolithicArray = new Float32Array(numComponents*array.length);
+            mIndex = 0;
+
+            for(var i = 0; i < array.length; i++) {
+                for(var j = 0; j < numComponents; j++){
+                    monolithicArray[mIndex] = array[i][j];
+                    mIndex++;
+                }
+            }
+
+            // provide texture coordinates for the rectangle.
+            var attributeBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, attributeBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, monolithicArray, gl.STATIC_DRAW);
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+            var buff ={};
+
+            buff.bindToAttribute = function(program, attribute_name) {
+                gl.useProgram(program.program);
+
+                // look up where the texture coordinates need to go.
+                var attributeLocation = gl.getAttribLocation(program.program, attribute_name);
+
+                if (attributeLocation === -1) {
+                    throw new Error("Could not get attribute: " + attribute_name);
+                }
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, attributeBuffer);
+                gl.enableVertexAttribArray(attributeLocation);
+                gl.vertexAttribPointer(attributeLocation, numComponents, gl.FLOAT, false, 0, 0);
+                gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+                gl.useProgram(null);
+
+                return buff;
+            };
+
+            return buff;
+        };
+
 
         var textures = [];
 
@@ -126,7 +204,7 @@ var WebGL = {
             }
         };
 
-        out.addTexture = function(width, height, image, useFloat) {
+        out.addTextureArray = function(width, height, array, useFloat) {
 
             var texture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -136,16 +214,103 @@ var WebGL = {
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
             if (useFloat) {
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, image);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, array);
             }else{
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, image);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, array);
             }
 
-            textures.push(texture);
+            var tex = {
+                index : textures.length,
+                texture : texture,
+                width : width,
+                height : height,
+                array : array
+            };
+
+            tex.bindToTextureUnit = function(program, tu_i, tex_name, tex_size_name) {
+
+                gl.useProgram(program.program);
+
+                gl.activeTexture(gl.TEXTURE0 + tu_i);
+                gl.bindTexture(gl.TEXTURE_2D, tex.texture);
+
+                if (tex_name) {
+                    var u_textureLocation = gl.getUniformLocation(program.program, tex_name);
+                    gl.uniform1i(u_textureLocation, tu_i);
+                }
+
+                if (tex_size_name) {
+                    var textureSizeLocation = gl.getUniformLocation(program.program, tex_size_name);
+                    gl.uniform2f(textureSizeLocation, tex.width, tex.height);
+                }
+
+                gl.useProgram(null);
+
+                return tex;
+            };
+
+            textures.push(tex);
 
             gl.bindTexture(gl.TEXTURE_2D, null);
 
-            return texture;
+            return tex;
+
+        };
+
+        out.addTextureImage = function(image) {
+
+            var texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+            gl.bindTexture(gl.TEXTURE_2D, null);
+
+            var tex = {
+                index : textures.length,
+                texture : texture,
+                image : image
+            };
+
+            tex.bindToTextureUnit = function(program, tu_i, tex_name, tex_size_name) {
+
+                gl.useProgram(program.program);
+
+                gl.activeTexture(gl.TEXTURE0 + tu_i);
+                gl.bindTexture(gl.TEXTURE_2D, tex.texture);
+
+                if (tex_name) {
+                    var u_textureLocation = gl.getUniformLocation(program.program, tex_name);
+
+                    if (u_textureLocation === null) {
+                        throw new Error("Could not get uniform: " + tex_name);
+                    }
+
+                    gl.uniform1i(u_textureLocation, tu_i);
+                }
+
+                if (tex_size_name) {
+                    var textureSizeLocation = gl.getUniformLocation(program.program, tex_size_name);
+
+                    if (textureSizeLocation === null) {
+                        throw new Error("Could not get uniform: " + tex_size_name);
+                    }
+
+                    gl.uniform2f(textureSizeLocation, tex.width, tex.height);
+                }
+
+                gl.useProgram(null);
+
+                return tex;
+            };
+
+            textures.push(tex);
+
+            return tex;
 
         };
 
@@ -153,19 +318,12 @@ var WebGL = {
 
         out.addFrameBuffer = function(width, height, useFloat) {
 
-            var texture = out.addTexture(width, height, null, useFloat);
+            var texture = out.addTextureArray(width, height, null, useFloat);
 
             //out.gl.bindTexture(gl.TEXTURE_2D, texture);
 
             var fbo = gl.createFramebuffer();
-            var fb = {
-                index : framebuffers.size(),
-                frameBuffer: fbo,
-                texture : texture,
-                width : width,
-                height : height};
 
-            framebuffers.push(fb);
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
@@ -178,32 +336,51 @@ var WebGL = {
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
+            var fb = {
+                index : framebuffers.length,
+                frameBuffer: fbo,
+                texture : texture,
+                width : width,
+                height : height
+            };
+
+            fb.bind = function(program, resolution_name) {
+
+                gl.useProgram(program.program);
+
+                // make this the framebuffer we are rendering to.
+                gl.bindFramebuffer(gl.FRAMEBUFFER, fb.frameBuffer);
+
+                if (resolution_name) {
+                    // Tell the shader the resolution of the framebuffer.
+                    var resolutionLocation = gl.getUniformLocation(program.program, resolution_name);
+                    gl.uniform2f(resolutionLocation, fb.width, fb.height);
+                }
+
+                // Tell webgl the viewport setting needed for framebuffer.
+                gl.viewport(0, 0, fb.width, fb.height);
+
+                gl.useProgram(null);
+            };
+
+            framebuffers.push(fb);
+
             return fb;
         };
 
-        out.bindFrameBuffer = function(i) {
-            var fb = framebuffers[i];
+        out.bindCanvas = function (program) {
+            gl.useProgram(program.program);
 
-            // make this the framebuffer we are rendering to.
-            gl.bindFramebuffer(gl.FRAMEBUFFER, fb.frameBuffer);
-
-            // Tell the shader the resolution of the framebuffer.
-            var resolutionLocation = gl.getUniformLocation(program, "u_resolution");
-            gl.uniform2f(resolutionLocation, fb.width, fb.height);
-
-            // Tell webgl the viewport setting needed for framebuffer.
-            gl.viewport(0, 0, fb.width, fb.height);
-        };
-
-        out.bindCanvas = function () {
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
             // Tell the shader the resolution of the framebuffer.
-            var resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+            var resolutionLocation = gl.getUniformLocation(program.program, "u_resolution");
             gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
 
             // Tell webgl the viewport setting needed for framebuffer.
             gl.viewport(0, 0, canvas.width, canvas.height);
+
+            gl.useProgram(null);
         };
 
         return out;
