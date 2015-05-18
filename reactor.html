@@ -13,8 +13,20 @@
         <link href="css/reactor.css" rel="stylesheet">
         <script>
             $(function() {
+/*
+                var worker = new Worker('js/reactor_worker.js');
 
+                worker.addEventListener('message', function(e) {
+                  console.log('Worker said: ', e.data);
+                }, false);
 
+                worker.onerror = function(e) {
+                    alert("Error in file: "+e.filename+"nline: "+e.lineno+"nDescription: "+e.message);
+                };
+
+                worker.postMessage('Hello World'); // Send data to our worker.
+
+*/
                 var fuel = ReactorBlock({
                     fast_scattering: 0.2,
                     thermal_scattering: 0.95,

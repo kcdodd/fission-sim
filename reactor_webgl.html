@@ -20,10 +20,15 @@
 
             $(function() {
 
-                var array = new Float32Array(512*512*4);
+                var array = new Float32Array(550*1100*4);
 
-                for(var i = 0; i < 512*512*4; i++){
-                    array[i] = Math.random();
+                for(var i = 0; i < 550*1100*4; i++){
+
+                    if (i % 4 === 3) {
+                        array[i] = 1.0;
+                    }else if (i % 4 === 0) {
+                        array[i] = Math.random();
+                    }
                 }
 
                 // Get A WebGL context
@@ -32,27 +37,46 @@
 
 
                 var program = my.linkProgram({
-                    vertexShaderSource : document.getElementById("2d-vertex-shader").text,
-                    fragmentShaderSource : document.getElementById("2d-fragment-shader").text
+                    vertexShaderSource : document.getElementById("cellblock_step_vert").text,
+                    fragmentShaderSource : document.getElementById("cellblock_step_frag").text
                 });
+
+                my.enableFloatTexture();
 
 
                 // set the resolution
-                program.addUniformFloat("u_resolution", [canvas.width, canvas.height]);
+                program.addUniformFloat("u_resolution", [my.canvas.width, my.canvas.height]);
 
+                program.addUniformFloat("u_numCells", 50);
+
+                program.addUniformFloat("u_numBlocks", [11, 11]);
+
+                program.addUniformFloat("u_numFields", 2);
+
+
+
+                // fields
+                my.addTextureArray(1100, 550, array, true).bindToTextureUnit(program, "u_fields", "u_fieldTexSize");
+
+                // interactions between fields
+                my.addTextureArray(2, 2, new Float32Array([
+                    0.0, 0.0, 0.0, 0.0,
+                    1.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0,
+                ]), true).bindToTextureUnit(program, "u_interactions", "u_interactionTexSize");
+
+                // triangle vertices
                 my.addArrayFloat([
                     [0, 0],
-                    [400, 0],
-                    [0, 200],
-                    [0, 200],
-                    [400, 0],
-                    [400, 200]
+                    [my.canvas.width, 0],
+                    [0, my.canvas.height],
+                    [0, my.canvas.height],
+                    [my.canvas.width, 0],
+                    [my.canvas.width, my.canvas.height]
                 ]).bindToAttribute(program, "a_position");
 
-                my.enableFloatTexture();
-                my.addTextureArray(512, 512, array, true).bindToTextureUnit(program, 0, "u_image_A");
-                my.addTextureArray(512, 512, array, true).bindToTextureUnit(program, 0, "u_image_B");
-
+                // texture coordinets for vertices
                 my.addArrayFloat([
                     [0.0,  0.0],
                     [1.0,  0.0],
@@ -70,50 +94,122 @@
         </script>
 
 
-        <script id="2d-vertex-shader" type="x-shader/x-vertex">
-            attribute vec2 a_position;
-            attribute vec2 a_texCoord;
+        <script id="cellblock_step_vert" type="x-shader/x-vertex">
+        attribute vec2 a_position;
+        attribute vec2 a_texCoord;
 
-            uniform vec2 u_resolution;
+        uniform vec2 u_resolution;
 
-            varying vec2 v_texCoord;
+        varying vec2 v_texCoord;
 
-            void main() {
-               // convert the rectangle from pixels to 0.0 to 1.0
-               vec2 zeroToOne = a_position / u_resolution;
+        void main() {
+           // convert the rectangle from pixels to 0.0 to 1.0
+           vec2 zeroToOne = a_position / u_resolution;
 
-               // convert from 0->1 to 0->2
-               vec2 zeroToTwo = zeroToOne * 2.0;
+           // convert from 0->1 to 0->2
+           vec2 zeroToTwo = zeroToOne * 2.0;
 
-               // convert from 0->2 to -1->+1 (clipspace)
-               vec2 clipSpace = zeroToTwo - 1.0;
+           // convert from 0->2 to -1->+1 (clipspace)
+           vec2 clipSpace = zeroToTwo - 1.0;
 
-               gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+           gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
 
-               v_texCoord = a_texCoord;
-            }
+           v_texCoord = a_texCoord;
+        }
+
         </script>
 
-        <script id="2d-fragment-shader" type="x-shader/x-fragment">
+        <script id="cellblock_step_frag" type="x-shader/x-fragment">
             precision mediump float;
 
-            // our texture
-            uniform sampler2D u_image_A;
-            uniform sampler2D u_image_B;
-            //uniform vec2 u_textureSize;
+            //cellblock information
+            uniform float u_numCells;
+            uniform vec2 u_numBlocks;
+            uniform float u_numFields;
+
+            // fields
+            uniform vec2 u_fieldTexSize;
+            uniform sampler2D u_fields;
+
+            // kernels
+            uniform vec2 u_kernelTexSize;
+            uniform sampler2D u_kernels;
+
+            // field interactions
+            uniform vec2 u_interactionTexSize;
+            uniform sampler2D u_interactions;
 
             // the texCoords passed in from the vertex shader.
             varying vec2 v_texCoord;
 
             void main() {
 
-               gl_FragColor = texture2D(u_image_A, v_texCoord) - 0.5*texture2D(u_image_B, v_texCoord);
+                vec2 curBlock = floor(v_texCoord * u_fieldTexSize / u_numCells);
+                float curField = floor(1.0001 * curBlock.x / u_numBlocks.x);
+
+                // modulus hackery due to rounding errors
+                vec2 curFieldBlock = floor(curBlock - u_numBlocks*floor(1.0001*curBlock/u_numBlocks));
+
+                // compute 1 pixel in texture coordinates.
+                vec2 dX = vec2(1.0, 0.0) / u_fieldTexSize;
+                vec2 dY = vec2(0.0, 1.0) / u_fieldTexSize;
+
+                vec2 dX2 = 2.0*dX;
+                vec2 dY2 = 2.0*dY;
+
+                if (curFieldBlock.x == 0.0 || curFieldBlock.x == (u_numBlocks.x-1.0) || curFieldBlock.y == 0.0 || curFieldBlock.y == (u_numBlocks.y-1.0)) {
+                    // boundary does not evolove
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+
+                }else{
+                    // 5x5 convolution
+                    gl_FragColor = (
+                        texture2D(u_fields, v_texCoord - dX2 - dY2) + // -2
+                        texture2D(u_fields, v_texCoord - dX - dY2) +
+                        texture2D(u_fields, v_texCoord - dY2) +
+                        texture2D(u_fields, v_texCoord + dX - dY2) +
+                        texture2D(u_fields, v_texCoord + dX2 - dY2) +
+                        texture2D(u_fields, v_texCoord - dX2 - dY) + // -1
+                        texture2D(u_fields, v_texCoord - dX - dY) +
+                        texture2D(u_fields, v_texCoord - dY) +
+                        texture2D(u_fields, v_texCoord + dX - dY) +
+                        texture2D(u_fields, v_texCoord + dX2 - dY) +
+                        texture2D(u_fields, v_texCoord - dX2) + // 0
+                        texture2D(u_fields, v_texCoord - dX) +
+                        texture2D(u_fields, v_texCoord) +
+                        texture2D(u_fields, v_texCoord + dX) +
+                        texture2D(u_fields, v_texCoord + dX2) +
+                        texture2D(u_fields, v_texCoord - dX2 + dY) + // +1
+                        texture2D(u_fields, v_texCoord - dX + dY) +
+                        texture2D(u_fields, v_texCoord + dY) +
+                        texture2D(u_fields, v_texCoord + dX + dY) +
+                        texture2D(u_fields, v_texCoord + dX2 + dY) +
+                        texture2D(u_fields, v_texCoord - dX2 + dY2) + // +2
+                        texture2D(u_fields, v_texCoord - dX + dY2) +
+                        texture2D(u_fields, v_texCoord + dY2) +
+                        texture2D(u_fields, v_texCoord + dX + dY2) +
+                        texture2D(u_fields, v_texCoord + dX2 + dY2))/25.0;
+
+                    // interactions between fields (max of 10 fields)
+                    for(float i = 0.0; i < 10.0; ++i) {
+                        // this is seriously stupid hackery
+                        if (i >= u_numFields) {
+                            break;
+                        }
+
+                        // self interaction is handled by kernel convolution
+                        if (i != curField) {
+                            gl_FragColor += texture2D(u_interactions, vec2(curField, i)/u_numFields) * texture2D(u_fields, v_texCoord);
+                        }
+                    }
+                }
             }
+
         </script>
 
     </head>
     <body>
-        <canvas id="canvas" width="400" height="300"></canvas>
+        <canvas id="canvas" width="1100" height="550"></canvas>
 
     </body>
 </html>

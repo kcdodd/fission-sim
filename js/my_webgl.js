@@ -206,6 +206,8 @@ var WebGL = {
 
         out.addTextureArray = function(width, height, array, useFloat) {
 
+            gl.activeTexture(gl.TEXTURE0 + textures.length);
+
             var texture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, texture);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -227,17 +229,12 @@ var WebGL = {
                 array : array
             };
 
-            tex.bindToTextureUnit = function(program, tu_i, tex_name, tex_size_name) {
+            tex.bindToTextureUnit = function(program, tex_name, tex_size_name) {
 
                 gl.useProgram(program.program);
 
-                gl.activeTexture(gl.TEXTURE0 + tu_i);
-                gl.bindTexture(gl.TEXTURE_2D, tex.texture);
-
-                if (tex_name) {
-                    var u_textureLocation = gl.getUniformLocation(program.program, tex_name);
-                    gl.uniform1i(u_textureLocation, tu_i);
-                }
+                var u_textureLocation = gl.getUniformLocation(program.program, tex_name);
+                gl.uniform1i(u_textureLocation, tex.index);
 
                 if (tex_size_name) {
                     var textureSizeLocation = gl.getUniformLocation(program.program, tex_size_name);
@@ -251,7 +248,6 @@ var WebGL = {
 
             textures.push(tex);
 
-            gl.bindTexture(gl.TEXTURE_2D, null);
 
             return tex;
 
