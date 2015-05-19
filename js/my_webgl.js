@@ -324,7 +324,7 @@ var WebGL = {
             gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
             // Attach a texture to it.
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture.texture, 0);
 
             if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
                     throw new Error("Frame buffer creation failed");
@@ -364,14 +364,16 @@ var WebGL = {
             return fb;
         };
 
-        out.bindCanvas = function (program) {
+        out.bindCanvas = function (program, resolution_name) {
             gl.useProgram(program.program);
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-            // Tell the shader the resolution of the framebuffer.
-            var resolutionLocation = gl.getUniformLocation(program.program, "u_resolution");
-            gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+            if (resolution_name) {
+                // Tell the shader the resolution of the framebuffer.
+                var resolutionLocation = gl.getUniformLocation(program.program, resolution_name);
+                gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+            }
 
             // Tell webgl the viewport setting needed for framebuffer.
             gl.viewport(0, 0, canvas.width, canvas.height);

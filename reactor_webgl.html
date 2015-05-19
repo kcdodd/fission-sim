@@ -3,14 +3,12 @@
     <head>
         <meta charset="utf-8">
         <title>Reactor Designer (webgl)</title>
-
+<!--
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.4/themes/ui-darkness/jquery-ui.css">
-        <link href="css/reactor.css" rel="stylesheet">
-
-
         <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
         <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script>
-
+-->
+        <link href="css/reactor.css" rel="stylesheet">
         <script src="js/structures.js"></script>
         <script src="js/ui.js"></script>
 
@@ -18,17 +16,33 @@
         <script>
             "use strict";
 
-            $(function() {
+            window.onload = function() {
 
-                var array = new Float32Array(550*1100*4);
+                var kernel = [
+                    0.01, 0.01, 0.01, 0.01, 0.01,
+                    0.01, 0.08, 0.08, 0.08, 0.01,
+                    0.01, 0.08, 0.2, 0.08, 0.01,
+                    0.01, 0.08, 0.08, 0.08, 0.01,
+                    0.01, 0.01, 0.01, 0.01, 0.01,
+                ];
+
+                var fields = new Float32Array(550*1100*4);
 
                 for(var i = 0; i < 550*1100*4; i++){
 
                     if (i % 4 === 3) {
-                        array[i] = 1.0;
+                        fields[i] = 1.0;
                     }else if (i % 4 === 0) {
-                        array[i] = Math.random();
+                        fields[i] = Math.random();
                     }
+                }
+
+                var kernel_size = 11*11*25*2*4;
+
+                var kernels = new Float32Array(kernel_size);
+
+                for(var j = 0; j < 11*11*25*2; j++) {
+                    kernels[j*4] = kernel[j % 25];
                 }
 
                 // Get A WebGL context
@@ -56,12 +70,17 @@
 
 
                 // fields
-                my.addTextureArray(1100, 550, array, true).bindToTextureUnit(program, "u_fields", "u_fieldTexSize");
+                var initfields = my.addTextureArray(1100, 550, fields, true).bindToTextureUnit(program, "u_fields", "u_fieldTexSize");
+
+                var fbA = my.addFrameBuffer(1100, 550, true);
+                var fbB = my.addFrameBuffer(1100, 550, true);
+
+                my.addTextureArray(11*5*2, 11*5, kernels, true).bindToTextureUnit(program, "u_kernels", "u_kernelTexSize");
 
                 // interactions between fields
                 my.addTextureArray(2, 2, new Float32Array([
                     0.0, 0.0, 0.0, 0.0,
-                    1.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0,
                     0.0, 0.0, 0.0, 0.0,
                     0.0, 0.0, 0.0, 0.0,
                 ]), true).bindToTextureUnit(program, "u_interactions", "u_interactionTexSize");
@@ -86,11 +105,25 @@
                     [1.0,  1.0]
                 ]).bindToAttribute(program, "a_texCoord");
 
-                // draw
+                for(var k = 0; k < 10; k++) {
+                    fbA.bind(program);
+
+                    program.drawTriangles(0, 6);
+
+                    fbA.texture.bindToTextureUnit(program, "u_fields", "u_fieldTexSize");
+
+                    fbB.bind(program);
+
+                    program.drawTriangles(0, 6);
+
+                    fbB.texture.bindToTextureUnit(program, "u_fields", "u_fieldTexSize");
+                }
+
+                my.bindCanvas(program);
+
                 program.drawTriangles(0, 6);
 
-
-            });
+            };
         </script>
 
 
@@ -144,55 +177,67 @@
 
             void main() {
 
-                vec2 curBlock = floor(v_texCoord * u_fieldTexSize / u_numCells);
-                float curField = floor(1.0001 * curBlock.x / u_numBlocks.x);
+                vec2 curBlock = floor(1.0001*v_texCoord * u_fieldTexSize / u_numCells);
+
 
                 // modulus hackery due to rounding errors
                 vec2 curFieldBlock = floor(curBlock - u_numBlocks*floor(1.0001*curBlock/u_numBlocks));
 
-                // compute 1 pixel in texture coordinates.
-                vec2 dX = vec2(1.0, 0.0) / u_fieldTexSize;
-                vec2 dY = vec2(0.0, 1.0) / u_fieldTexSize;
-
-                vec2 dX2 = 2.0*dX;
-                vec2 dY2 = 2.0*dY;
 
                 if (curFieldBlock.x == 0.0 || curFieldBlock.x == (u_numBlocks.x-1.0) || curFieldBlock.y == 0.0 || curFieldBlock.y == (u_numBlocks.y-1.0)) {
                     // boundary does not evolove
                     gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
 
                 }else{
+
+                    // compute 1 pixel in texture coordinates.
+                    vec2 dX = vec2(1.0, 0.0) / u_fieldTexSize;
+                    vec2 dY = vec2(0.0, 1.0) / u_fieldTexSize;
+
+                    vec2 dX2 = 2.0*dX;
+                    vec2 dY2 = 2.0*dY;
+
                     // 5x5 convolution
-                    gl_FragColor = (
-                        texture2D(u_fields, v_texCoord - dX2 - dY2) + // -2
-                        texture2D(u_fields, v_texCoord - dX - dY2) +
-                        texture2D(u_fields, v_texCoord - dY2) +
-                        texture2D(u_fields, v_texCoord + dX - dY2) +
-                        texture2D(u_fields, v_texCoord + dX2 - dY2) +
-                        texture2D(u_fields, v_texCoord - dX2 - dY) + // -1
-                        texture2D(u_fields, v_texCoord - dX - dY) +
-                        texture2D(u_fields, v_texCoord - dY) +
-                        texture2D(u_fields, v_texCoord + dX - dY) +
-                        texture2D(u_fields, v_texCoord + dX2 - dY) +
-                        texture2D(u_fields, v_texCoord - dX2) + // 0
-                        texture2D(u_fields, v_texCoord - dX) +
-                        texture2D(u_fields, v_texCoord) +
-                        texture2D(u_fields, v_texCoord + dX) +
-                        texture2D(u_fields, v_texCoord + dX2) +
-                        texture2D(u_fields, v_texCoord - dX2 + dY) + // +1
-                        texture2D(u_fields, v_texCoord - dX + dY) +
-                        texture2D(u_fields, v_texCoord + dY) +
-                        texture2D(u_fields, v_texCoord + dX + dY) +
-                        texture2D(u_fields, v_texCoord + dX2 + dY) +
-                        texture2D(u_fields, v_texCoord - dX2 + dY2) + // +2
-                        texture2D(u_fields, v_texCoord - dX + dY2) +
-                        texture2D(u_fields, v_texCoord + dY2) +
-                        texture2D(u_fields, v_texCoord + dX + dY2) +
-                        texture2D(u_fields, v_texCoord + dX2 + dY2))/25.0;
+                    vec2 kernelCenter = (curBlock * 5.0 + vec2(2.0, 2.0)) / u_kernelTexSize;
+                    vec2 kdX = vec2(1.0, 0.0) / u_kernelTexSize;
+                    vec2 kdY = vec2(0.0, 1.0) / u_kernelTexSize;
+
+                    vec2 kdX2 = 2.0*kdX;
+                    vec2 kdY2 = 2.0*kdY;
+
+                    gl_FragColor =
+                        texture2D(u_kernels, kernelCenter - kdX2 - kdY2) * texture2D(u_fields, v_texCoord - dX2 - dY2) + // -2
+                        texture2D(u_kernels, kernelCenter - kdX - kdY2) * texture2D(u_fields, v_texCoord - dX - dY2) +
+                        texture2D(u_kernels, kernelCenter - kdY2) * texture2D(u_fields, v_texCoord - dY2) +
+                        texture2D(u_kernels, kernelCenter + kdX - kdY2) * texture2D(u_fields, v_texCoord + dX - dY2) +
+                        texture2D(u_kernels, kernelCenter + kdX2 - kdY2) * texture2D(u_fields, v_texCoord + dX2 - dY2) +
+                        texture2D(u_kernels, kernelCenter - kdX2 - kdY) * texture2D(u_fields, v_texCoord - dX2 - dY) + // -1
+                        texture2D(u_kernels, kernelCenter - kdX - kdY) * texture2D(u_fields, v_texCoord - dX - dY) +
+                        texture2D(u_kernels, kernelCenter - kdY) * texture2D(u_fields, v_texCoord - dY) +
+                        texture2D(u_kernels, kernelCenter + kdX - kdY) * texture2D(u_fields, v_texCoord + dX - dY) +
+                        texture2D(u_kernels, kernelCenter + kdX2 - kdY) * texture2D(u_fields, v_texCoord + dX2 - dY) +
+                        texture2D(u_kernels, kernelCenter - kdX2) * texture2D(u_fields, v_texCoord - dX2) + // 0
+                        texture2D(u_kernels, kernelCenter - kdX) * texture2D(u_fields, v_texCoord - dX) +
+                        texture2D(u_kernels, kernelCenter) * texture2D(u_fields, v_texCoord) +
+                        texture2D(u_kernels, kernelCenter + kdX) * texture2D(u_fields, v_texCoord + dX) +
+                        texture2D(u_kernels, kernelCenter + kdX2) * texture2D(u_fields, v_texCoord + dX2) +
+                        texture2D(u_kernels, kernelCenter - kdX2 + kdY) * texture2D(u_fields, v_texCoord - dX2 + dY) + // +1
+                        texture2D(u_kernels, kernelCenter - kdX + kdY) * texture2D(u_fields, v_texCoord - dX + dY) +
+                        texture2D(u_kernels, kernelCenter + kdY) * texture2D(u_fields, v_texCoord + dY) +
+                        texture2D(u_kernels, kernelCenter + kdX + kdY) * texture2D(u_fields, v_texCoord + dX + dY) +
+                        texture2D(u_kernels, kernelCenter + kdX2 + kdY) * texture2D(u_fields, v_texCoord + dX2 + dY) +
+                        texture2D(u_kernels, kernelCenter - kdX2 + kdY2) * texture2D(u_fields, v_texCoord - dX2 + dY2) + // +2
+                        texture2D(u_kernels, kernelCenter - kdX + kdY2) * texture2D(u_fields, v_texCoord - dX + dY2) +
+                        texture2D(u_kernels, kernelCenter + kdY2) * texture2D(u_fields, v_texCoord + dY2) +
+                        texture2D(u_kernels, kernelCenter + kdX + kdY2) * texture2D(u_fields, v_texCoord + dX + dY2) +
+                        texture2D(u_kernels, kernelCenter + kdX2 + kdY2) * texture2D(u_fields, v_texCoord + dX2 + dY2);
+
+
+                    float curField = floor(1.0001 * curBlock.x / u_numBlocks.x);
 
                     // interactions between fields (max of 10 fields)
                     for(float i = 0.0; i < 10.0; ++i) {
-                        // this is seriously stupid hackery
+                        // this is seriously hackery
                         if (i >= u_numFields) {
                             break;
                         }
