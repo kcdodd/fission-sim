@@ -246,6 +246,17 @@ var WebGL = {
                 return tex;
             };
 
+            tex.update = function() {
+                gl.activeTexture(gl.TEXTURE0 + tex.index);
+                gl.bindTexture(gl.TEXTURE_2D, tex.texture);
+
+                if (useFloat) {
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, array);
+                }else{
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, array);
+                }
+            };
+
             textures.push(tex);
 
 

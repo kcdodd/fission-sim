@@ -981,25 +981,30 @@ function Cellblock2D(input)
 ;
 
 /**
+ * @typedef {Object} ReactorBlockInput
  *
- * @param {type} input structure
- {
- fast_scattering: ,
- thermal_scattering: ,
- moderation: ,
- fast_absorption:,
- thermal_absorption:,
- fast_fission: ,
- thermal_fission: ,
- neutrons_per_fission: ,
- prompt_factor: ,
- delayed_factor: ,
- fission_energy: ,
- conductivity: ,
- specific_heat: ,
- cooling_rate:
- }
- * @returns {Cellblock2D}
+ * @property {number} [fast_scattering]
+ * @property {number} [thermal_scattering]
+ * @property {number} [moderation]
+ * @property {number} [fast_absorption]
+ * @property {number} [thermal_absorption]
+ * @property {number} [fast_fission]
+ * @property {number} [thermal_fission]
+ * @property {number} [neutrons_per_fission]
+ * @property {number} [prompt_factor]
+ * @property {number} [delayed_factor]
+ * @property {number} [fission_energy]
+ * @property {number} [conductivity]
+ * @property {number} [specific_heat]
+ * @property {number} [cooling_rate]
+ */
+/**
+ * @typedef {Object} ReactorBlock
+ */
+/**
+ *
+ * @param {ReactorBlockInput} input structure
+ * @returns {ReactorBlock}
  */
 function ReactorBlock(input)
 {
@@ -1146,5 +1151,4 @@ function ReactorBlock(input)
     output.compute();
 
     return output;
-}
-;
+};
