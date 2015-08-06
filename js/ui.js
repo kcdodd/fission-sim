@@ -1,11 +1,11 @@
-/* 
+/*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
 
 /**
- * 
+ *
  * @param {type} input
  {
  div_id : string,
@@ -17,7 +17,7 @@
  xaxis_range:,
  xaxis_num_ticks :[integer],
  xaxis_title:,
- yaxis_range:, 
+ yaxis_range:,
  yaxis_num_ticks :[integer],
  yaxis_title
  }
@@ -171,8 +171,8 @@ var newPlot2D = function (input) {
 };
 
 /**
- * 
- * @param {type} input 
+ *
+ * @param {type} input
  {
  x:,
  y:,
@@ -221,7 +221,7 @@ function Plot2DArea(input) {
 
     /**
      * Updates the plot using current contents of the input.data field
-     * 
+     *
      * @returns {undefined}
      */
     output.redraw = function (viewport, t)
@@ -257,7 +257,7 @@ function Plot2DArea(input) {
 ;
 
 /**
- * 
+ *
  * @param {type} input
  {
  x:,
@@ -280,7 +280,7 @@ var ColorBar = function (input) {
         // if new was not called, start with base object.
         output = {};
     }
-    
+
     var canvas = document.createElement("canvas");
     var ctx;
     var imgData;
@@ -330,7 +330,7 @@ var ColorBar = function (input) {
 };
 
 /**
- * 
+ *
  * @param {type} input
  {
  canvas_id :,[string]
@@ -483,13 +483,13 @@ var newLinearAxis = function (input)
 };
 
 /**
- * 
+ *
  * @param {type} input
  {
  canvas_id :[string],
  text: [string],
  rotate : ['cw', 'ccw'],
- 
+
  }
  * @returns {unresolved}
  */
@@ -534,7 +534,7 @@ var newTitle = function (input)
 };
 
 /**
- * 
+ *
  * @param {type} input
  {
  max:,
@@ -548,20 +548,20 @@ var newRange = function (input)
     var intercept;
 
     var output = {};
-    
+
     var recalc = function(){
         slope = 1 / (input.max - input.min);
         intercept = -slope * input.min;
     };
-    
+
     recalc();
 
     Object.defineProperty(output, 'max', {
-        
+
         get: function () {
             return input.max;
         },
-        
+
         set: function (value) {
             input.max = value;
             recalc();
@@ -572,13 +572,13 @@ var newRange = function (input)
         get: function () {
             return input.min;
         },
-        
+
         set: function (value) {
             input.min = value;
             recalc();
         }
     });
-    
+
 
 
     output.norm = function (x)
@@ -597,7 +597,7 @@ var newRange = function (input)
  * @param {type} params structure
  * {
  *     // piecewise function for each color x \in [0,1], y \in [0,1]
- *     r : [[x1, x2, y(x1), y(x2)],...], 
+ *     r : [[x1, x2, y(x1), y(x2)],...],
  *     g : [[x1, x2, y(x1), y(x2)],...],
  *     b : [[x1, x2, y(x1), y(x2)],...]
  * }
@@ -689,14 +689,14 @@ function newColorMap(min, max, n, params)
 }
 ;
 /**
- * 
+ *
  * @param {type} input
  * {
  colormap:,
  numContours:,
  contourHalfWidth:,
  numContours:,
- 
+
  * @returns {undefined}
  */
 var newContourMap = function (input)
@@ -907,7 +907,7 @@ function CanvasFigure(input) {
     }
 
     output.input = input;
-    
+
 
 
     output.canvas = document.getElementById(input.id);
@@ -920,7 +920,7 @@ function CanvasFigure(input) {
     output.layers = [];
 
     /**
-     * 
+     *
      * @param {type} layer
      {
      redraw: function(viewport, t)
@@ -939,12 +939,12 @@ function CanvasFigure(input) {
 
     /**
      * Redraws the canvas drawing each layer in the order that they were added
-     * @param 
+     * @param
      * @param {type} t time since the beginning of the animation.
      * @returns {undefined}
      */
     output.redraw = function (t) {
-        
+
 
         output.ctx.setTransform(1, 0, 0, 1, 0, 0);
         output.ctx.clearRect(0, 0, output.canvas.width, output.canvas.height);
@@ -971,7 +971,7 @@ function CanvasFigure(input) {
     var selected = [];
 
     /**
-     * 
+     *
      * @param {type} selectable
      {
      in: function(x,y) returns [true,false]
@@ -1122,7 +1122,7 @@ function Animation() {
 
     /**
      * Redraws the canvas drawing each layer in the order that they were added
-     * @param 
+     * @param
      * @param {type} t time since the beginning of the animation.
      * @returns {undefined}
      */
@@ -1188,8 +1188,8 @@ function Animation() {
                 {
 
                     output.redraw(t);
-                    
-                    
+
+
 
                     fpstime = timestamp - fpsstart;
                     framecount++;
@@ -1203,7 +1203,7 @@ function Animation() {
                         fpsstart = timestamp;
                         framecount = 0;
                     }
-                    
+
                     requestAnimationFrame(step);
                 } else {
                     if (typeof output.fpsCallback !== 'undefined')
@@ -1247,13 +1247,13 @@ function Animation() {
             return animate;
         }
     });
-    
+
     return output;
 }
 ;
 
 /**
- * 
+ *
  * @param {type} input
  {
  viewport: CanvasViewport
@@ -1348,7 +1348,7 @@ var objToURL = function (obj) {
 
 
 /**
- * 
+ *
  * @param {type} input
  {
     x:
@@ -1375,7 +1375,7 @@ function BlockClickArea(input) {
         // if new was not called, start with base object.
         output = {};
     }
-    
+
     var image = input.image;
 
     var selected = false;
@@ -1396,10 +1396,10 @@ function BlockClickArea(input) {
 
     output.selected = function (figure) {
         selected = true;
-        
+
         image = input.controller.image;
         input.blocks.set(input.i, input.j, input.controller.block_type);
-        
+
         figure.redraw(0);
     };
 
@@ -1409,7 +1409,7 @@ function BlockClickArea(input) {
 
     output.redraw = function (figure) {
         var ctx = figure.ctx;
-        
+
         ctx.drawImage(image, input.x, input.y, input.width, input.height);
 
         ctx.beginPath();
@@ -1418,7 +1418,7 @@ function BlockClickArea(input) {
         ctx.lineTo(input.x + input.width, input.y + input.height);
         ctx.lineTo(input.x, input.y + input.height);
         ctx.closePath();
-        
+
         ctx.lineWidth = 1;
         ctx.strokeStyle = 'black';
         ctx.stroke();

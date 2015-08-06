@@ -9,155 +9,163 @@
         <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script>
 -->
         <link href="css/reactor.css" rel="stylesheet">
-        <script src="js/structures.js"></script>
-        <script src="js/ui.js"></script>
+        <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.4/themes/ui-lightness/jquery-ui.css">
 
-        <script src="js/my_webgl.js"></script>
-        <script src="js/reactor_webgl.js"></script>
+        <script data-main="js/main" src="js/lib/require.js"></script>
 
-        <script>
-            "use strict";
-
-            window.onload = function() {
-
-                var reactor = makeReactor({
-                    num_blocks_i : 11,
-                    num_blocks_j : 11,
-                    num_cells : 50
-                });
-
-            };
-        </script>
-
-
-        <script id="cellblock_step_vert" type="x-shader/x-vertex">
-            attribute vec2 a_position;
-            attribute vec2 a_texCoord;
-
-            uniform vec2 u_resolution;
-
-            varying vec2 v_texCoord;
-
-            void main() {
-               // convert the rectangle from pixels to 0.0 to 1.0
-               vec2 zeroToOne = a_position / u_resolution;
-
-               // convert from 0->1 to 0->2
-               vec2 zeroToTwo = zeroToOne * 2.0;
-
-               // convert from 0->2 to -1->+1 (clipspace)
-               vec2 clipSpace = zeroToTwo - 1.0;
-
-               gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-
-               v_texCoord = a_texCoord;
-            }
-
-        </script>
-
-        <script id="cellblock_step_frag" type="x-shader/x-fragment">
-            precision mediump float;
-
-            //cellblock information
-            uniform float u_numCells;
-            uniform vec2 u_numBlocks;
-            uniform float u_numFields;
-
-            // fields
-            uniform vec2 u_fieldTexSize;
-            uniform sampler2D u_fields;
-
-            // kernels
-            uniform vec2 u_kernelTexSize;
-            uniform sampler2D u_kernels;
-
-            // field interactions
-            uniform vec2 u_interactionTexSize;
-            uniform sampler2D u_interactions;
-
-            // the texCoords passed in from the vertex shader.
-            varying vec2 v_texCoord;
-
-            void main() {
-
-                vec2 curBlock = floor(1.0001*v_texCoord * u_fieldTexSize / u_numCells);
-
-
-                // modulus hackery due to rounding errors
-                vec2 curFieldBlock = floor(curBlock - u_numBlocks*floor(1.0001*curBlock/u_numBlocks));
-
-
-                if (curFieldBlock.x == 0.0 || curFieldBlock.x == (u_numBlocks.x-1.0) || curFieldBlock.y == 0.0 || curFieldBlock.y == (u_numBlocks.y-1.0)) {
-                    // boundary does not evolove
-                    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-
-                }else{
-
-                    // compute 1 pixel in texture coordinates.
-                    vec2 dX = vec2(1.0, 0.0) / u_fieldTexSize;
-                    vec2 dY = vec2(0.0, 1.0) / u_fieldTexSize;
-
-                    vec2 dX2 = 2.0*dX;
-                    vec2 dY2 = 2.0*dY;
-
-                    // 5x5 convolution
-                    vec2 kernelCenter = (curBlock * 5.0 + vec2(2.0, 2.0)) / u_kernelTexSize;
-                    vec2 kdX = vec2(1.0, 0.0) / u_kernelTexSize;
-                    vec2 kdY = vec2(0.0, 1.0) / u_kernelTexSize;
-
-                    vec2 kdX2 = 2.0*kdX;
-                    vec2 kdY2 = 2.0*kdY;
-
-                    gl_FragColor =
-                        texture2D(u_kernels, kernelCenter - kdX2 - kdY2) * texture2D(u_fields, v_texCoord - dX2 - dY2) + // -2
-                        texture2D(u_kernels, kernelCenter - kdX - kdY2) * texture2D(u_fields, v_texCoord - dX - dY2) +
-                        texture2D(u_kernels, kernelCenter - kdY2) * texture2D(u_fields, v_texCoord - dY2) +
-                        texture2D(u_kernels, kernelCenter + kdX - kdY2) * texture2D(u_fields, v_texCoord + dX - dY2) +
-                        texture2D(u_kernels, kernelCenter + kdX2 - kdY2) * texture2D(u_fields, v_texCoord + dX2 - dY2) +
-                        texture2D(u_kernels, kernelCenter - kdX2 - kdY) * texture2D(u_fields, v_texCoord - dX2 - dY) + // -1
-                        texture2D(u_kernels, kernelCenter - kdX - kdY) * texture2D(u_fields, v_texCoord - dX - dY) +
-                        texture2D(u_kernels, kernelCenter - kdY) * texture2D(u_fields, v_texCoord - dY) +
-                        texture2D(u_kernels, kernelCenter + kdX - kdY) * texture2D(u_fields, v_texCoord + dX - dY) +
-                        texture2D(u_kernels, kernelCenter + kdX2 - kdY) * texture2D(u_fields, v_texCoord + dX2 - dY) +
-                        texture2D(u_kernels, kernelCenter - kdX2) * texture2D(u_fields, v_texCoord - dX2) + // 0
-                        texture2D(u_kernels, kernelCenter - kdX) * texture2D(u_fields, v_texCoord - dX) +
-                        texture2D(u_kernels, kernelCenter) * texture2D(u_fields, v_texCoord) +
-                        texture2D(u_kernels, kernelCenter + kdX) * texture2D(u_fields, v_texCoord + dX) +
-                        texture2D(u_kernels, kernelCenter + kdX2) * texture2D(u_fields, v_texCoord + dX2) +
-                        texture2D(u_kernels, kernelCenter - kdX2 + kdY) * texture2D(u_fields, v_texCoord - dX2 + dY) + // +1
-                        texture2D(u_kernels, kernelCenter - kdX + kdY) * texture2D(u_fields, v_texCoord - dX + dY) +
-                        texture2D(u_kernels, kernelCenter + kdY) * texture2D(u_fields, v_texCoord + dY) +
-                        texture2D(u_kernels, kernelCenter + kdX + kdY) * texture2D(u_fields, v_texCoord + dX + dY) +
-                        texture2D(u_kernels, kernelCenter + kdX2 + kdY) * texture2D(u_fields, v_texCoord + dX2 + dY) +
-                        texture2D(u_kernels, kernelCenter - kdX2 + kdY2) * texture2D(u_fields, v_texCoord - dX2 + dY2) + // +2
-                        texture2D(u_kernels, kernelCenter - kdX + kdY2) * texture2D(u_fields, v_texCoord - dX + dY2) +
-                        texture2D(u_kernels, kernelCenter + kdY2) * texture2D(u_fields, v_texCoord + dY2) +
-                        texture2D(u_kernels, kernelCenter + kdX + kdY2) * texture2D(u_fields, v_texCoord + dX + dY2) +
-                        texture2D(u_kernels, kernelCenter + kdX2 + kdY2) * texture2D(u_fields, v_texCoord + dX2 + dY2);
-
-
-                    float curField = floor(1.0001 * curBlock.x / u_numBlocks.x);
-
-                    // interactions between fields (max of 10 fields)
-                    for(float i = 0.0; i < 10.0; ++i) {
-                        // this is seriously hackery
-                        if (i >= u_numFields) {
-                            break;
-                        }
-
-                        // self interaction is handled by kernel convolution
-                        if (i != curField) {
-                            gl_FragColor += texture2D(u_interactions, vec2(curField, i)/u_numFields) * texture2D(u_fields, v_texCoord);
-                        }
-                    }
-                }
-            }
-
-        </script>
 
     </head>
     <body>
-        <canvas id="canvas" width="1100" height="550"></canvas>
+        <canvas id="fast" width="500" height="500"></canvas>
+        <canvas id="slow" width="500" height="500"></canvas>
+        <img id="moderator_image" src="images/moderator.png" style="display:none" />
+        <img id="fuel_image" src="images/fuel.png" style="display:none" />
+        <img id="reflector_image" src="images/reflector.png" style="display:none" />
+        <img id="absorber_image" src="images/absorber.png" style="display:none" />
+        <img id="coolant_image" src="images/coolant.png" style="display:none" />
 
+
+        <ul id="menu" style="width:135px; position: absolute;top: 5px; left: 5px;" class="ui-menu ui-widget ui-widget-content ui-corner-all">
+
+            <li class="ui-widget-header ui-corner-all" style="padding: 0.2em;">Project</li>
+<!--
+            <li id='loadbutton' class="ui-menu-item"><span class="ui-icon ui-icon-folder-open"></span>Load</li>
+            <li id='savebutton' class="ui-menu-item"><span class="ui-icon ui-icon-disk"></span>Save</li>
+            <li id="config_button" class="ui-menu-item"><span class="ui-icon ui-icon-wrench"></span>Settings</li>
+            <li id="help_button" class="ui-menu-item"><span class="ui-icon ui-icon-info"></span>Help</li>
+-->
+            <li><span class="ui-icon ui-icon-newwin"></span>Views
+                <ul>
+                    <li id="view1">Operation</li>
+                    <!-- <li id="view2">Design</li> -->
+                </ul>
+            </li>
+
+            <li class="ui-widget-header ui-corner-all" style="padding: 0.2em;">Reactor</li>
+            <li id="runbutton" class="ui-menu-item"><span id="runicon" class="ui-icon"></span><span id="runstatus"></span> (<span id="fpsstatus">0</span> fps)</li>
+            <li id="reactor_ctrl_button" class="ui-menu-item"><span id="reactor_ctrl_check" class="ui-icon ui-icon-plus"></span>Controls</li>
+            <li id="material_ctrl_button" class="ui-menu-item"><span id="material_ctrl_check" class="ui-icon ui-icon-plus"></span>Components</li>
+
+
+
+            <li class="ui-widget-header ui-corner-all" style="padding: 0.2em;">Plots</li>
+
+            <li id="plot_fast" class="ui-menu-item"><span id="plot_fast_check" class="ui-icon ui-icon-plus"></span>Fast Neutrons</li>
+            <li id="plot_thermal" class="ui-menu-item"><span id="plot_thermal_check" class="ui-icon ui-icon-plus"></span>Thermal Neutrons</li>
+            <li id="plot_fission" class="ui-menu-item"><span id="plot_fission_check" class="ui-icon ui-icon-plus"></span>Fissions</li>
+            <li id="plot_temp" class="ui-menu-item"><span id="plot_temp_check" class="ui-icon ui-icon-plus"></span>Temperature</li>
+        </ul>
+
+        <div id="reactor_ctrl_dialog" title="Reactor Controls">
+            <p class="ui-state-default ui-corner-all" style="padding:4px; text-align:center;">
+                Reactor State
+            </p>
+
+            <table style="width:100%; ">
+                <tr><td style="width:50%; text-align:right;">Power: </td><td><span id="power"></span></td></tr>
+                <tr><td style="width:50%; text-align:right;">Reactivity: </td><td><span id="growth_rate"></span></td></tr>
+                <tr><td style="width:50%; text-align:right;">Core Temp.: </td><td><span id="core_temp"></span></td></tr>
+            </table>
+
+
+            <p class="ui-state-default ui-corner-all" style="padding:4px; text-align:center;">
+                Control Rod Positions
+            </p>
+
+            <!--
+            <select name="ctrl_presets" id="ctrl_presets">
+                <option>Shutdown / SCRAM</option>
+                <option>Start/ Supercritical</option>
+                <option>Run / Critical</option>
+            </select>
+            -->
+
+            <table style="width:100%; text-align:center;">
+                <tr>
+                    <td><div class="ctrlbox center"><div id="ctrl_rod1" class="center ctrlrod"></div></div></td>
+                    <td><div class="ctrlbox_unused center"></div></td>
+                    <td><div class="ctrlbox_unused center"></div></td>
+                    <td><div class="ctrlbox_unused center"></div></td>
+                    <td><div class="ctrlbox_unused center"></div></td>
+                    <td><div class="ctrlbox_unused center"></div></td>
+                    <td><div class="ctrlbox_unused center"></div></td>
+                    <td><div class="ctrlbox_unused center"></div></td>
+                    <td><div class="ctrlbox_unused center"></div></td>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>2</td>
+                    <td>3</td>
+                    <td>4</td>
+                    <td>5</td>
+                    <td>6</td>
+                    <td>7</td>
+                    <td>8</td>
+                    <td>9</td>
+                </tr>
+            </table>
+
+
+        </div>
+
+        <div id="settings_dialog" title="Settings">
+
+        </div>
+
+        <div id="fastplotdialog" title="Fast Neutrons">
+
+            <canvas id="fast_figure" height="400" width="460" class="plot"></canvas>
+        </div>
+
+        <div id="thermalplotdialog" title="Thermal Neutrons">
+
+            <canvas id="thermal_figure" height="400" width="460" class="plot"></canvas>
+        </div>
+
+        <div id="fissionplotdialog" title="Fissions">
+
+            <canvas id="fission_figure" height="400" width="460" class="plot"></canvas>
+        </div>
+
+        <div id="tempplotdialog" title="Temperature">
+
+            <canvas id="temp_figure" height="400" width="460" class="plot"></canvas>
+        </div>
+
+        <div id="components_dialog" title="Components" class="components">
+
+            <canvas id="components_figure" height="440" width="440" class="plot"></canvas>
+
+            <div>
+
+            </div>
+            <div class="edit">
+
+                <label for="materials">Material</label>
+                <select name="materials" id="materials">
+                    <option>Moderator</option>
+                    <option>Fuel</option>
+                    <option>Reflector</option>
+                    <option>Absorber</option>
+                    <option>Coolant</option>
+                </select>
+                <br /><br />
+                <!--
+                <label for="controls">Control</label>
+                <select name="controls" id="controls">
+                    <option>None</option>
+                    <option>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                    <option>4</option>
+                    <option>5</option>
+                    <option>6</option>
+                    <option>7</option>
+                    <option>8</option>
+                    <option>9</option>
+                </select>-->
+                <br /><br />
+            </div>
+        </div>
     </body>
 </html>
