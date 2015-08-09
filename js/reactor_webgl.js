@@ -199,7 +199,7 @@ define(['structures', 'utilities'], function (struct, util) {
             colormaps : 'object'
         });
 
-        var output = {};
+        var newReactor = {};
 
         var num_fields = 5;
         var kernel_size = 5;
@@ -293,7 +293,7 @@ define(['structures', 'utilities'], function (struct, util) {
             return num.toFixed(20);
         };
 
-        var render_vert = function() {
+        var step_vert = function() {
             var src_arr = [
                 "attribute vec2 a_position;",
                 "attribute vec2 a_texCoord;",
@@ -307,6 +307,22 @@ define(['structures', 'utilities'], function (struct, util) {
                 "}",
             ];
 
+            return src_arr.join('\n');
+        } // step_vert()
+
+        var render_vert = function() {
+            var src_arr = [
+                "attribute vec2 a_position;",
+                "attribute vec2 a_texCoord;",
+                //"uniform vec2 u_resolution;",
+                "varying vec2 v_texCoord;",
+
+                "void main() {",
+                "    gl_Position = vec4(a_position, 0, 1);",
+
+                "    v_texCoord = a_texCoord;",
+                "}",
+            ];
 
             return src_arr.join('\n');
         } // render_vert()
@@ -454,7 +470,7 @@ define(['structures', 'utilities'], function (struct, util) {
 
         document.body.appendChild(canvas);
 
-        output.canvas = canvas;
+        newReactor.canvas = canvas;
 
         var webgl = util.webGL("reactor_webgl_canvas");
 
@@ -469,6 +485,15 @@ define(['structures', 'utilities'], function (struct, util) {
             [1, -1]
         ]);
 
+        var render_vertex_positions = webgl.addVertexData([
+            [-1, -1],
+            [1, -1],
+            [-1, 1],
+            [-1, 1],
+            [1, -1],
+            [1, 1]
+        ]);
+
         // texture coordinets for vertices
         var texture_coordinates = webgl.addVertexData([
             [0.0,  1.0],
@@ -479,7 +504,14 @@ define(['structures', 'utilities'], function (struct, util) {
             [1.0,  0.0]
         ]);
 
-
+        var render_texture_coordinates = webgl.addVertexData([
+            [0.0,  0.0],
+            [1.0,  0.0],
+            [0.0,  1.0],
+            [0.0,  1.0],
+            [1.0,  0.0],
+            [1.0,  1.0]
+        ]);
 
         // interactions between fields
         var interaction_tex = webgl.addTextureArray(
@@ -530,7 +562,7 @@ define(['structures', 'utilities'], function (struct, util) {
         for(var i = 0; i < num_fields; i++) {
 
             var programStep = webgl.linkProgram({
-                vertexShaderSource : render_vert(),
+                vertexShaderSource : step_vert(),
                 fragmentShaderSource : convolution_frag(i)
             });
 
@@ -571,7 +603,7 @@ define(['structures', 'utilities'], function (struct, util) {
             vertex_positions.bind(programRender, "a_position");
 
             // texture coordinets for vertices
-            texture_coordinates.bind(programRender, "a_texCoord");
+            render_texture_coordinates.bind(programRender, "a_texCoord");
 
             field_buffers_B[i].texture.bind(programRender, "u_field");
         }
@@ -579,7 +611,7 @@ define(['structures', 'utilities'], function (struct, util) {
         for(var i = 0; i < num_fields; i++) {
 
             var programStep = webgl.linkProgram({
-                vertexShaderSource : render_vert(),
+                vertexShaderSource : step_vert(),
                 fragmentShaderSource : convolution_frag(i)
             });
 
@@ -607,7 +639,7 @@ define(['structures', 'utilities'], function (struct, util) {
         // initiate with random fields
         (function(){
             var programRender = webgl.linkProgram({
-                vertexShaderSource : render_vert(),
+                vertexShaderSource : step_vert(),
                 fragmentShaderSource : copy_frag()
             });
 
@@ -678,7 +710,14 @@ define(['structures', 'utilities'], function (struct, util) {
             need_update = false;
         };
 
-        output.updateColorscale = function() {
+        var needUpdateColormaps = true;
+
+        var updateColorscale = function() {
+            if (!needUpdateColormaps)
+            {
+                return;
+            }
+
             for(var i = 0; i < num_fields; i++) {
 
                 if (input.colormaps[i]) {
@@ -690,11 +729,17 @@ define(['structures', 'utilities'], function (struct, util) {
 
             }
 
+            needUpdateColormaps = false;
+
         };
 
-        output.updateColorscale();
+        newReactor.updateColorscale = function() {
+            needUpdateColormaps = true;
+        };
 
-        output.setReactorBlock = function(block_i, block_j, reactorblock){
+
+
+        newReactor.setReactorBlock = function(block_i, block_j, reactorblock){
             need_update = true;
 
             var i, j, f;
@@ -732,8 +777,9 @@ define(['structures', 'utilities'], function (struct, util) {
 
         // step simulation
 
-        output.step = function() {
+        newReactor.step = function() {
             updateReactorBlocks();
+
 
             for(var i = 0; i < num_fields; i++) {
                 step_programsA[i].drawTriangles(0, 6, field_buffers_A[i]);
@@ -746,12 +792,62 @@ define(['structures', 'utilities'], function (struct, util) {
         };
 
         // creates output from colormaps
-        output.renderToCanvas = function(field) {
+        newReactor.renderToCanvas = function(field, array) {
+            updateColorscale();
+
             render_programs[field].drawTriangles(0, 6);
+
+            if (array) {
+                webgl.getCanvasPixels(array);
+            }
+        };
+
+        var fb_96x96 = webgl.addFrameBuffer(96, 96, true);
+        var maxTemp = util.webgl_max({in: field_buffers_B[4], out: fb_96x96});
+        var fb_24x24 = webgl.addFrameBuffer(24, 24, true);
+        var maxTemp2 = util.webgl_max({in: fb_96x96, out: fb_24x24});
+        var fb_6x6 = webgl.addFrameBuffer(6, 6, true);
+        var maxTemp3 = util.webgl_max({in: fb_24x24, out: fb_6x6});
+
+        var outArray_6x6 = new Float32Array(4*6*6);
+
+        newReactor.maxTemp = function() {
+            maxTemp.compute();
+            maxTemp2.compute();
+            maxTemp3.compute();
+
+            fb_6x6.readPixels(outArray_6x6);
+            var max = 0;
+
+            for(var i = 0; i < 36; i++) {
+                max = Math.max(max, outArray_6x6[4*i]);
+            }
+
+            return max;
         };
 
 
-        return output;
+
+        var avgFis = util.webgl_avg({in: field_buffers_B[2], out: fb_96x96});
+        var avgFis2 = util.webgl_avg({in: fb_96x96, out: fb_24x24});
+        var avgFis3 = util.webgl_avg({in: fb_24x24, out: fb_6x6});
+
+        newReactor.avgFissions = function() {
+            avgFis.compute();
+            avgFis2.compute();
+            avgFis3.compute();
+
+            fb_6x6.readPixels(outArray_6x6);
+            var avg = 0;
+
+            for(var i = 0; i < 36; i++) {
+                avg += outArray_6x6[4*i];
+            }
+
+            return avg/36.0;
+        };
+
+        return newReactor;
     };
 
     return exports;

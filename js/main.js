@@ -11,5 +11,9 @@ require.config({
 require([
     'reactor_webgl_ui'
 ], function(app) {
-    app.init();
+    try{
+        app.init();
+    }catch(e){
+        alert(e.message());
+    }
 });

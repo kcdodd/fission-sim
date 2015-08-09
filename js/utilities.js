@@ -115,7 +115,7 @@ define(function (){
         @param test - object to validate
         @param control - object with properties test object must have
      */
-    exports.validate_object = function(test, control) {
+    exports.validate_object = function(f, test, control) {
 
         for(var prop in control) {
             try {
@@ -125,6 +125,7 @@ define(function (){
             }
         }
     };
+
 
     /**
      * This is a wrapper for the webgl interface.
@@ -151,7 +152,7 @@ define(function (){
         });
 
         // get the webgl interface object from the canvas context.
-        var gl = out.canvas.getContext("webgl");
+        var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
 
         // if that fails then abandon
         if (!gl) {
@@ -252,7 +253,8 @@ define(function (){
             // exposed for testing purposes but using it to alter anything may
             // lead to undefined behaviour.
             var prog = {
-                program : program
+                program : program,
+                bindings : []
             };
 
             /**
@@ -308,6 +310,11 @@ define(function (){
 
             prog.drawTriangles = function(first, count, target, resolution_name) {
                 gl.useProgram(program);
+
+
+                for(var i = 0; i < prog.bindings.length; i++) {
+                    prog.bindings[i]();
+                }
 
                 if (target) {
                     // make this the framebuffer we are rendering to.
@@ -377,7 +384,7 @@ define(function (){
                 }
             }
 
-            // provide texture coordinates for the rectangle.
+
             var attributeBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, attributeBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, monolithicArray, gl.STATIC_DRAW);
@@ -395,12 +402,14 @@ define(function (){
                     throw new Error("Could not get attribute: " + attribute_name);
                 }
 
-                gl.bindBuffer(gl.ARRAY_BUFFER, attributeBuffer);
-                gl.enableVertexAttribArray(attributeLocation);
-                gl.vertexAttribPointer(attributeLocation, numComponents, gl.FLOAT, false, 0, 0);
-                gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
                 gl.useProgram(null);
+
+                program.bindings.push(function(){
+                    gl.bindBuffer(gl.ARRAY_BUFFER, attributeBuffer);
+                    gl.enableVertexAttribArray(attributeLocation);
+                    gl.vertexAttribPointer(attributeLocation, numComponents, gl.FLOAT, false, 0, 0);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+                });
 
                 return buff;
             };
@@ -533,7 +542,8 @@ define(function (){
             var tex = {
                 index : textures.length,
                 texture : texture,
-                image : image
+                image : image,
+                webgl : out
             };
 
             tex.bind = function(program, tex_name, tex_size_name) {
@@ -595,6 +605,7 @@ define(function (){
             // Attach a texture to it.
             gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture.texture, 0);
 
+
             if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
                     throw new Error("Frame buffer creation failed");
             }
@@ -606,7 +617,8 @@ define(function (){
                 frameBuffer: fbo,
                 texture : texture,
                 width : width,
-                height : height
+                height : height,
+                webgl : out
             };
 
             /**
@@ -630,6 +642,18 @@ define(function (){
 
                 gl.useProgram(null);
             };
+
+            fb.readPixels = function(array) {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, fb.frameBuffer);
+
+                if (useFloat) {
+                    gl.readPixels(0, 0, width, height, gl.RGBA, gl.FLOAT, array);
+                }else{
+                    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, array);
+                }
+
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            }
 
             framebuffers.push(fb);
 
@@ -656,6 +680,13 @@ define(function (){
             gl.useProgram(null);
         };
 
+        out.getCanvasPixels = function(array) {
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, array);
+
+        };
+
         return out;
     };
 
@@ -663,21 +694,27 @@ define(function (){
 
         if (!validated) {
             exports.validate_object(input, {
-                source_canvas_id: 'string',
-                source_blocks_i : 'number',
-                source_blocks_j : 'number'
+                in : 'object',
+                out : 'object'
             });
         }
 
+        if (input.in.webgl !== input.out.webgl) {
+            throw new Error("Buffers must be in same webgl context.");
+        }
+
+        var webgl = input.in.webgl;
+
         var output = {};
 
-        var source_canvas = document.getElementById(input.source_canvas_id);
+        var source_buffer = input.in;
+        var target_buffer = input.out;
 
-        var cells_i = source_canvas.width / input.source_blocks_i;
-        var cells_j = source_canvas.height / input.source_blocks_j;
+        var cells_i = source_buffer.width / target_buffer.width;
+        var cells_j = source_buffer.height / target_buffer.height;
 
         if (cells_i % 1 !== 0 || cells_j % 1 !== 0) {
-            throw new Error("source canvas dimensions do not match integer block count.")
+            throw new Error("source dimensions do not match integer target dimensions.");
         }
 
         var render_vert = function() {
@@ -705,11 +742,12 @@ define(function (){
         var max_frag = function() {
 
             var max_arr = [];
-
-            for(var i = 1; i < cells_i; i++) {
-                for(var j = 0; j < cells_j; j++) {
-                    max_arr.push("    gl_FragColor = max(gl_FragColor, texture2D(u_source, v_texCoord + vec2(" + N(i/source_canvas.width) + "," + N(j/source_canvas.height) + ")));");
+            var startj = 1;
+            for(var i = 0; i < cells_i; i++) {
+                for(var j = startj; j < cells_j; j++) {
+                    max_arr.push("    gl_FragColor = max(gl_FragColor, texture2D(u_source, v_texCoord + vec2(" + N(i/source_buffer.width) + "," + N(j/source_buffer.height) + ")));");
                 }
+                startj = 0;
             }
 
 
@@ -728,28 +766,11 @@ define(function (){
             ];
             var src = src_arr.join('\n');
 
-            console.log(src)
+            //console.log(src)
 
 
             return src;
         }; // max_frag()
-
-
-
-        // create canvas element for webgl to work on
-        var canvas = document.createElement("CANVAS");
-        canvas.id = "webgl_max_" + input.source_canvas_id + "_" + input.source_blocks_i + "_" + input.source_blocks_j;
-        canvas.width = input.source_blocks_i;
-        canvas.height = input.source_blocks_j;
-        canvas.style.display = "none";
-
-        document.body.appendChild(canvas);
-
-        output.canvas = canvas;
-
-        var webgl = exports.webGL(canvas.id);
-
-        var source_tex = webgl.addTextureImage(source_canvas);
 
         var vertex_positions = webgl.addVertexData([
             [-1, 1],
@@ -770,22 +791,148 @@ define(function (){
             [1.0,  0.0]
         ]);
 
-        var program = webgl.linkProgram({
+        var program = source_buffer.webgl.linkProgram({
             vertexShaderSource : render_vert(),
             fragmentShaderSource : max_frag()
         });
 
-        source_tex.bind(program, "u_source");
+        source_buffer.texture.bind(program, "u_source");
         vertex_positions.bind(program, "a_position");
         texture_coordinates.bind(program, "a_texCoord");
 
         output.compute = function () {
-            program.drawTriangles(0, 6);
+
+            program.drawTriangles(0, 6, target_buffer);
+
         };
 
-        return output;
-    }
 
+        return output;
+    };
+
+
+    exports.webgl_avg = function(input, validated){
+
+        if (!validated) {
+            exports.validate_object(input, {
+                in : 'object',
+                out : 'object'
+            });
+        }
+
+        if (input.in.webgl !== input.out.webgl) {
+            throw new Error("Buffers must be in same webgl context.");
+        }
+
+        var webgl = input.in.webgl;
+
+        var output = {};
+
+        var source_buffer = input.in;
+        var target_buffer = input.out;
+
+        var cells_i = source_buffer.width / target_buffer.width;
+        var cells_j = source_buffer.height / target_buffer.height;
+
+        if (cells_i % 1 !== 0 || cells_j % 1 !== 0) {
+            throw new Error("source dimensions do not match integer target dimensions.");
+        }
+
+        var render_vert = function() {
+            var src_arr = [
+                "attribute vec2 a_position;",
+                "attribute vec2 a_texCoord;",
+                //"uniform vec2 u_resolution;",
+                "varying vec2 v_texCoord;",
+
+                "void main() {",
+                "    gl_Position = vec4(a_position, 0, 1);",
+
+                "    v_texCoord = a_texCoord;",
+                "}",
+            ];
+
+
+            return src_arr.join('\n');
+        } // render_vert()
+
+        var N = function(num) {
+            return num.toFixed(20);
+        };
+
+        var avg_frag = function() {
+
+            var avg_arr = [];
+
+            var startj = 1;
+            for(var i = 0; i < cells_i; i++) {
+                for(var j = startj; j < cells_j; j++) {
+                    avg_arr.push("        texture2D(u_source, v_texCoord + vec2(" + N(i/source_buffer.width) + "," + N(j/source_buffer.height) + "))");
+                }
+
+                startj = 0;
+            }
+
+
+            var src_arr = [
+                "precision mediump float;",
+
+                "uniform sampler2D u_source;",
+
+                // the texCoords passed in from the vertex shader.
+                "varying vec2 v_texCoord;",
+
+                "void main() {",
+                "    gl_FragColor = " + N(1.0/(cells_i*cells_j)) + " * (texture2D(u_source, v_texCoord) + ",
+                avg_arr.join(" + \n"),
+                "    );",
+                "}"
+            ];
+            var src = src_arr.join('\n');
+
+            //console.log(src)
+
+
+            return src;
+        }; // avg_frag()
+
+        var vertex_positions = webgl.addVertexData([
+            [-1, 1],
+            [1, 1],
+            [-1, -1],
+            [-1, -1],
+            [1, 1],
+            [1, -1]
+        ]);
+
+        // texture coordinets for vertices
+        var texture_coordinates = webgl.addVertexData([
+            [0.0,  1.0],
+            [1.0,  1.0],
+            [0.0,  0.0],
+            [0.0,  0.0],
+            [1.0,  1.0],
+            [1.0,  0.0]
+        ]);
+
+        var program = source_buffer.webgl.linkProgram({
+            vertexShaderSource : render_vert(),
+            fragmentShaderSource : avg_frag()
+        });
+
+        source_buffer.texture.bind(program, "u_source");
+        vertex_positions.bind(program, "a_position");
+        texture_coordinates.bind(program, "a_texCoord");
+
+        output.compute = function () {
+
+            program.drawTriangles(0, 6, target_buffer);
+
+        };
+
+
+        return output;
+    }; // webgl_avg
 
     /**
      *
@@ -1726,7 +1873,7 @@ define(function (){
                         if (fpstime >= 1000) {
                             if (output.fpsCallback)
                             {
-                                output.fpsCallback(Math.round(1000 * framecount / fpstime));
+                                output.fpsCallback(Math.round(1000 * framecount / fpstime), fpstime/1000.0);
                             }
 
                             fpsstart = timestamp;

@@ -7,27 +7,27 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
     exports.init = function() {
         $(function() {
             var fuel = reactor_webgl.makeReactorBlock({
-                fast_scattering: 0.2,
-                thermal_scattering: 0.95,
-                moderation: 0.001,
+                fast_scattering: 0.0,
+                thermal_scattering: 0.25,
+                moderation: 0.0001,
                 fast_absorption: 0.0005,
-                thermal_absorption: 0.05,
+                thermal_absorption: 0.005,
                 fast_fission: 1,
                 thermal_fission: 1,
-                neutrons_per_fission: 4,
+                neutrons_per_fission: 2.5,
                 prompt_factor: 0.98,
                 delayed_factor: 0.5,
-                fission_energy: 0.0001,
-                conductivity: 0.5,
-                specific_heat: 1,
+                fission_energy: 1,
+                conductivity: 0.05,
+                specific_heat: 100,
                 cooling_rate: 0
             });
 
 
             var moderator = reactor_webgl.makeReactorBlock({
-                fast_scattering: 0.1,
-                thermal_scattering: 0.9,
-                moderation: 0.02,
+                fast_scattering: 0.0,
+                thermal_scattering: 0.25,
+                moderation: 0.002,
                 fast_absorption: 0,
                 thermal_absorption: 0,
                 fast_fission: 0,
@@ -36,17 +36,17 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
                 prompt_factor: 0,
                 delayed_factor: 0,
                 fission_energy: 0,
-                conductivity: 0.5,
-                specific_heat: 1,
+                conductivity: 0.05,
+                specific_heat: 100,
                 cooling_rate: 0
             });
 
             var control_absorption = 0.07;
 
             var absorber_input = {
-                fast_scattering: 0.1,
-                thermal_scattering: 0.9,
-                moderation: 0.01,
+                fast_scattering: 0.0,
+                thermal_scattering: 0.25,
+                moderation: 0.0001,
                 fast_absorption: 0.0005,
                 thermal_absorption: control_absorption,
                 fast_fission: 0,
@@ -56,16 +56,16 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
                 delayed_factor: 0,
                 fission_energy: 0,
                 conductivity: 0.5,
-                specific_heat: 1,
+                specific_heat: 100,
                 cooling_rate: 0
             };
 
             var absorber = reactor_webgl.makeReactorBlock(absorber_input);
 
             var reflector = reactor_webgl.makeReactorBlock({
-                fast_scattering: 0.2,
-                thermal_scattering: 0.97,
-                moderation: 0.001,
+                fast_scattering: 0.9,
+                thermal_scattering: 0.75,
+                moderation: 0.0001,
                 fast_absorption: 0,
                 thermal_absorption: 0,
                 fast_fission: 0,
@@ -75,16 +75,16 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
                 delayed_factor: 0,
                 fission_energy: 0,
                 conductivity: 0.5,
-                specific_heat: 1,
+                specific_heat: 100,
                 cooling_rate: 0
             });
 
             var coolant = reactor_webgl.makeReactorBlock({
-                fast_scattering: 0.1,
-                thermal_scattering: 0.9,
-                moderation: 0.01,
+                fast_scattering: 0.0,
+                thermal_scattering: 0.25,
+                moderation: 0.002,
                 fast_absorption: 0,
-                thermal_absorption: 0,
+                thermal_absorption: 0.001,
                 fast_fission: 0,
                 thermal_fission: 0,
                 neutrons_per_fission: 0,
@@ -92,14 +92,15 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
                 delayed_factor: 0,
                 fission_energy: 0,
                 conductivity: 0.5,
-                specific_heat: 1,
-                cooling_rate: 0.005
+                specific_heat: 100,
+                cooling_rate: 0.05
             });
+
 
             var fastColormap = util.makeColorMap({min: 0, max: 1, n: 256, params: util.colormap_presets.violet});
             var thermalColormap = util.makeColorMap({min: 0, max: 1, n: 256, params: util.colormap_presets.blue_cyan});
             var fissionColormap = util.makeColorMap({min: 0, max: 0.01, n: 256, params: util.colormap_presets.green});
-            var tempColormap = util.makeColorMap({min: 0.03, max: 0.1, n: 256, params: util.colormap_presets.hot}); //300K to 1000K initially
+            var tempColormap = util.makeColorMap({min: 0.0293, max: 0.1, n: 256, params: util.colormap_presets.hot}); //300K to 1000K initially
 
 
             var reactor = reactor_webgl.makeReactor({
@@ -133,17 +134,27 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
             {
                 for (var j = 0; j < 10; j++)
                 {
-                    reactor.setReactorBlock(i, j, moderator);
+                    var init_image;
+                    if (i === 4 && j === 4 || i === 5 && j === 5) {
+                        init_image = fuelImage;
+                        reactor.setReactorBlock(i, j, fuel);
+                    }else if (i === 4 && j === 5 || i === 5 && j === 4){
+                        init_image = coolantImage;
+                        reactor.setReactorBlock(i, j, coolant);
+                    }else{
+                        reactor.setReactorBlock(i, j, moderator);
+                        init_image = moderatorImage;
+                    }
 
                     // must create a closure to remember the i, j at this moment
                     (function (_i, _j) {
 
                         var areaInput = {
-                            x: Math.round(i * 40),
-                            y: Math.round(j * 40),
+                            x: i * 40,
+                            y: j * 40,
                             width: 40,
                             height: 40,
-                            image: moderatorImage
+                            image: init_image
                         };
 
                         areaInput.callback = function(figure) {
@@ -175,6 +186,7 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
 
             fastFigure.beginFrame = function() {
                 reactor.renderToCanvas(0);
+
             };
 
             fastFigure.addLayer(util.makePlot2DArea({
@@ -188,7 +200,19 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
                 width: 400,
                 height: 400
             }));
-
+/*
+            fastFigure.addLayer(util.makePlot2DArea({
+                data_canvas: max_function.canvas,
+                sx : 0,
+                sy : 0,
+                swidth : 96,
+                sheight : 96,
+                x: 0,
+                y: 0,
+                width: 96,
+                height: 96
+            }));
+*/
             fastFigure.addLayer(util.makeColorBar({
                 colormap: fastColormap,
                 x: 410,
@@ -253,28 +277,9 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
 
             var tempFigure = util.makeCanvasFigure({id: "temp_figure"});
 
-            var max_function = util.webgl_max({
-                source_canvas_id : reactor.canvas.id,
-                source_blocks_i : 96,
-                source_blocks_j : 96
-            });
 
             tempFigure.beginFrame = function() {
                 reactor.renderToCanvas(4);
-
-                /*max_function.compute();
-
-                var imgdata = max_function.canvas.getContext('2d').getImageData(0,0, 96, 96);
-
-                var max = 0;
-
-                for(var i = 0; i < 96; i++) {
-                    for(var j = 0; j < 96; j++) {
-                        max = Math.max(max, imgdata[4*(i + 96*j)]);
-                    }
-                }
-
-                console.log(max);*/
 
             };
 
@@ -367,8 +372,28 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
 
             };
 
-            animation.fpsCallback = function(fps) {
+            var last_fissions = 0;
+
+            animation.fpsCallback = function(fps, dt) {
                 document.getElementById("fpsstatus").innerText = fps;
+
+                var maxTemp = reactor.maxTemp();
+
+                var tempK = maxTemp * 10000;
+                var tempF = 1.8 * (tempK - 273) + 32;
+
+                $("#core_temp").html(tempK.toFixed(0) + " K (" + tempF.toFixed(0) + "&deg; F)");
+
+                var fissions = reactor.avgFissions()*480*480;
+
+                $("#power").html(fissions.toExponential(2) + " kW");
+                //document.getElementById("power").innerText = fissions.toExponential(2);
+
+                var crit = Math.exp(Math.log(fissions/last_fissions)/(fps*dt));
+
+                document.getElementById("growth_rate").innerText = ((crit - 1) / crit).toExponential(2);
+
+                last_fissions = fissions;
             };
 
 
@@ -437,8 +462,20 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
             button_to_dialog("#plot_fast", "#plot_fast_check", "#fastplotdialog", {
                 autoOpen: false,
                 position: {my: "left top", at: "right+265 top", of: "#menu"},
-                width: 500,
+                width: 450,
                 height: 450
+            });
+
+            $( "#fast_scale" ).spinner({
+                step: 1.0,
+                numberFormat: "n"
+            }).on('spinstop',function(){
+                var scale = $( "#fast_scale" ).spinner( "value" );
+
+                fastColormap.max = Math.pow(2, scale);
+
+
+                reactor.updateColorscale();
             });
 
 
@@ -448,8 +485,16 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
             button_to_dialog("#plot_thermal", "#plot_thermal_check", "#thermalplotdialog", {
                 autoOpen: false,
                 position: {my: "left top", at: "right+265 top", of: "#menu"},
-                width: 500,
-                height: 440
+                width: 450,
+                height: 450
+            });
+
+            $( "#thermal_scale" ).spinner({
+                step: 1.0,
+                numberFormat: "n"
+            }).on('spinstop',function(){
+                thermalColormap.max = Math.pow(2, $( "#thermal_scale" ).spinner( "value" ));
+                reactor.updateColorscale();
             });
 
             // Plot of fissions
@@ -457,8 +502,16 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
             button_to_dialog("#plot_fission", "#plot_fission_check", "#fissionplotdialog", {
                 autoOpen: false,
                 position: {my: "left top", at: "right+265 top", of: "#menu"},
-                width: 500,
-                height: 440
+                width: 450,
+                height: 450
+            });
+
+            $( "#fission_scale" ).spinner({
+                step: 1.0,
+                numberFormat: "n"
+            }).on('spinstop',function(){
+                fissionColormap.max = Math.pow(2, $( "#fission_scale" ).spinner( "value" ));
+                reactor.updateColorscale();
             });
 
             // Plot of temperature
@@ -466,8 +519,22 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
             button_to_dialog("#plot_temp", "#plot_temp_check", "#tempplotdialog", {
                 autoOpen: false,
                 position: {my: "left top", at: "right+265 top", of: "#menu"},
-                width: 500,
-                height: 440
+                width: 450,
+                height: 450
+            });
+
+            $( "#temp_scale" ).spinner({
+                step: 1.0,
+                numberFormat: "n"
+            }).on('spinstop',function(){
+                var scale = $( "#temp_scale" ).spinner( "value" );
+
+                if (scale > -2) {
+                    tempColormap.max = Math.pow(2, scale);
+                }else{
+                    tempColormap.max = 0.0293 + Math.pow(2, scale);
+                }
+                reactor.updateColorscale();
             });
 
             // Reactor controls
@@ -476,44 +543,72 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
                 autoOpen: false,
                 position: {my: "left top", at: "right+5 top", of: "#menu"},
                 width: 250,
-                height: 440
+                height: 650
             });
 
             // Reactor components
-
+/*
             button_to_dialog("#material_ctrl_button", "#material_ctrl_check", "#components_dialog", {
                 autoOpen: false,
                 position: {my: "left top", at: "right+5 top", of: "#menu"},
                 width: 500,
                 height: 500
             });
-
+*/
             $("#view1").click(function() {
                 $("#reactor_ctrl_dialog").dialog("open");
                 $("#reactor_ctrl_dialog").dialog("widget").position({my: "left top", at: "right+5 top", of: "#menu"});
                 $("#reactor_ctrl_dialog").dialog("widget").width(250);
-                $("#reactor_ctrl_dialog").dialog("widget").height(510);
+                $("#reactor_ctrl_dialog").dialog("widget").height(450);
 
 
                 $("#fastplotdialog").dialog("open");
                 $("#fastplotdialog").dialog("widget").position({my: "left top", at: "right+265 top", of: "#menu"});
                 $("#fastplotdialog").dialog("widget").width(250);
-                $("#fastplotdialog").dialog("widget").height(250);
+                $("#fastplotdialog").dialog("widget").height(270);
 
                 $("#thermalplotdialog").dialog("open");
                 $("#thermalplotdialog").dialog("widget").position({my: "left top", at: "right+525 top", of: "#menu"});
                 $("#thermalplotdialog").dialog("widget").width(250);
-                $("#thermalplotdialog").dialog("widget").height(250);
+                $("#thermalplotdialog").dialog("widget").height(270);
 
                 $("#fissionplotdialog").dialog("open");
-                $("#fissionplotdialog").dialog("widget").position({my: "left top", at: "right+265 top+260", of: "#menu"});
+                $("#fissionplotdialog").dialog("widget").position({my: "left top", at: "right+265 top+280", of: "#menu"});
                 $("#fissionplotdialog").dialog("widget").width(250);
-                $("#fissionplotdialog").dialog("widget").height(250);
+                $("#fissionplotdialog").dialog("widget").height(270);
 
                 $("#tempplotdialog").dialog("open");
-                $("#tempplotdialog").dialog("widget").position({my: "left top", at: "right+525 top+260", of: "#menu"});
+                $("#tempplotdialog").dialog("widget").position({my: "left top", at: "right+525 top+280", of: "#menu"});
                 $("#tempplotdialog").dialog("widget").width(250);
-                $("#tempplotdialog").dialog("widget").height(250);
+                $("#tempplotdialog").dialog("widget").height(270);
+            });
+
+            $("#view2").click(function() {
+                $("#reactor_ctrl_dialog").dialog("open");
+                $("#reactor_ctrl_dialog").dialog("widget").position({my: "left top", at: "right+5 top", of: "#menu"});
+                $("#reactor_ctrl_dialog").dialog("widget").width(250);
+                $("#reactor_ctrl_dialog").dialog("widget").height(450);
+
+
+                $("#fastplotdialog").dialog("open");
+                $("#fastplotdialog").dialog("widget").position({my: "left top", at: "right+265 top", of: "#menu"});
+                $("#fastplotdialog").dialog("widget").width(450);
+                $("#fastplotdialog").dialog("widget").height(450);
+
+                $("#thermalplotdialog").dialog("open");
+                $("#thermalplotdialog").dialog("widget").position({my: "left top", at: "right+730 top", of: "#menu"});
+                $("#thermalplotdialog").dialog("widget").width(450);
+                $("#thermalplotdialog").dialog("widget").height(450);
+
+                $("#fissionplotdialog").dialog("open");
+                $("#fissionplotdialog").dialog("widget").position({my: "left top", at: "right+265 top+465", of: "#menu"});
+                $("#fissionplotdialog").dialog("widget").width(450);
+                $("#fissionplotdialog").dialog("widget").height(450);
+
+                $("#tempplotdialog").dialog("open");
+                $("#tempplotdialog").dialog("widget").position({my: "left top", at: "right+730 top+465", of: "#menu"});
+                $("#tempplotdialog").dialog("widget").width(450);
+                $("#tempplotdialog").dialog("widget").height(450);
             });
 
             $("#ctrl_rod1").slider({
@@ -570,6 +665,8 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
 
                 }
             });
+
+            $("#containall").show();
         });
 
     };

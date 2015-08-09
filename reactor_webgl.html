@@ -16,13 +16,14 @@
 
     </head>
     <body>
+    <div id="containall" style="display: none;">
         <canvas id="fast" width="500" height="500"></canvas>
         <canvas id="slow" width="500" height="500"></canvas>
         <img id="moderator_image" src="images/moderator.png" style="display:none" />
-        <img id="fuel_image" src="images/fuel.png" style="display:none" />
+        <img id="fuel_image" src="images/fuel2.png" style="display:none" />
         <img id="reflector_image" src="images/reflector.png" style="display:none" />
         <img id="absorber_image" src="images/absorber.png" style="display:none" />
-        <img id="coolant_image" src="images/coolant.png" style="display:none" />
+        <img id="coolant_image" src="images/coolant2.png" style="display:none" />
 
 
         <ul id="menu" style="width:135px; position: absolute;top: 5px; left: 5px;" class="ui-menu ui-widget ui-widget-content ui-corner-all">
@@ -36,7 +37,8 @@
 -->
             <li><span class="ui-icon ui-icon-newwin"></span>Views
                 <ul>
-                    <li id="view1">Operation</li>
+                    <li id="view1">plots</li>
+                    <li id="view2">plots 2x</li>
                     <!-- <li id="view2">Design</li> -->
                 </ul>
             </li>
@@ -44,7 +46,7 @@
             <li class="ui-widget-header ui-corner-all" style="padding: 0.2em;">Reactor</li>
             <li id="runbutton" class="ui-menu-item"><span id="runicon" class="ui-icon"></span><span id="runstatus"></span> (<span id="fpsstatus">0</span> fps)</li>
             <li id="reactor_ctrl_button" class="ui-menu-item"><span id="reactor_ctrl_check" class="ui-icon ui-icon-plus"></span>Controls</li>
-            <li id="material_ctrl_button" class="ui-menu-item"><span id="material_ctrl_check" class="ui-icon ui-icon-plus"></span>Components</li>
+            <!--<li id="material_ctrl_button" class="ui-menu-item"><span id="material_ctrl_check" class="ui-icon ui-icon-plus"></span>Components</li>-->
 
 
 
@@ -67,45 +69,19 @@
                 <tr><td style="width:50%; text-align:right;">Core Temp.: </td><td><span id="core_temp"></span></td></tr>
             </table>
 
-
             <p class="ui-state-default ui-corner-all" style="padding:4px; text-align:center;">
-                Control Rod Positions
+                Reactor Elements
             </p>
 
-            <!--
-            <select name="ctrl_presets" id="ctrl_presets">
-                <option>Shutdown / SCRAM</option>
-                <option>Start/ Supercritical</option>
-                <option>Run / Critical</option>
+            <label for="materials">Select material, and click to place element.</label>
+            <select name="materials" id="materials">
+                <option>Moderator</option>
+                <option>Fuel</option>
+                <option>Reflector</option>
+                <option>Absorber</option>
+                <option>Coolant</option>
             </select>
-            -->
-
-            <table style="width:100%; text-align:center;">
-                <tr>
-                    <td><div class="ctrlbox center"><div id="ctrl_rod1" class="center ctrlrod"></div></div></td>
-                    <td><div class="ctrlbox_unused center"></div></td>
-                    <td><div class="ctrlbox_unused center"></div></td>
-                    <td><div class="ctrlbox_unused center"></div></td>
-                    <td><div class="ctrlbox_unused center"></div></td>
-                    <td><div class="ctrlbox_unused center"></div></td>
-                    <td><div class="ctrlbox_unused center"></div></td>
-                    <td><div class="ctrlbox_unused center"></div></td>
-                    <td><div class="ctrlbox_unused center"></div></td>
-                </tr>
-                <tr>
-                    <td>1</td>
-                    <td>2</td>
-                    <td>3</td>
-                    <td>4</td>
-                    <td>5</td>
-                    <td>6</td>
-                    <td>7</td>
-                    <td>8</td>
-                    <td>9</td>
-                </tr>
-            </table>
-
-
+            <canvas id="components_figure" height="400" width="400"  style="width:100%; height: auto;"></canvas>
         </div>
 
         <div id="settings_dialog" title="Settings">
@@ -113,42 +89,46 @@
         </div>
 
         <div id="fastplotdialog" title="Fast Neutrons">
-
+            <label for="fast_scale">Plot Scale:</label>
+            <input id="fast_scale" name="fast_scale" value="0.0" class="plot_scale">
             <canvas id="fast_figure" height="400" width="460" class="plot"></canvas>
         </div>
 
         <div id="thermalplotdialog" title="Thermal Neutrons">
-
+            <label for="thermal_scale">Plot Scale:</label>
+            <input id="thermal_scale" name="thermal_scale" value="0.0" class="plot_scale">
             <canvas id="thermal_figure" height="400" width="460" class="plot"></canvas>
         </div>
 
         <div id="fissionplotdialog" title="Fissions">
-
+            <label for="fission_scale">Plot Scale:</label>
+            <input id="fission_scale" name="fission_scale" value="-2.0" class="plot_scale">
             <canvas id="fission_figure" height="400" width="460" class="plot"></canvas>
         </div>
 
         <div id="tempplotdialog" title="Temperature">
-
+            <label for="temp_scale">Plot Scale:</label>
+            <input id="temp_scale" name="temp_scale" value="-1.0" class="plot_scale">
             <canvas id="temp_figure" height="400" width="460" class="plot"></canvas>
         </div>
 
         <div id="components_dialog" title="Components" class="components">
 
-            <canvas id="components_figure" height="440" width="440" class="plot"></canvas>
+            <!--<canvas id="components_figure" height="220" width="220" ></canvas>-->
 
             <div>
 
             </div>
             <div class="edit">
 
-                <label for="materials">Material</label>
+                <!--<label for="materials">Material</label>
                 <select name="materials" id="materials">
                     <option>Moderator</option>
                     <option>Fuel</option>
                     <option>Reflector</option>
                     <option>Absorber</option>
                     <option>Coolant</option>
-                </select>
+                </select>-->
                 <br /><br />
                 <!--
                 <label for="controls">Control</label>
@@ -167,5 +147,6 @@
                 <br /><br />
             </div>
         </div>
+    </div>
     </body>
 </html>
