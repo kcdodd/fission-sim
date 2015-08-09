@@ -88,3 +88,18 @@ body {
 select {
       width: 100%;
 }
+
+.loading_message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-top: -50px;
+    margin-left: -50px;
+    width: 100px;
+    height: 100px;
+    font-size: 4em;
+}​
+
+fieldset {
+  border: 0;
+}

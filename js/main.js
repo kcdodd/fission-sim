@@ -9,11 +9,11 @@ require.config({
 });
 
 require([
-    'reactor_webgl_ui'
-], function(app) {
-    try{
-        app.init();
-    }catch(e){
-        alert(e.message());
-    }
+    'reactor_webgl_ui',
+    'reactor_ui'
+], function(app_webgl, app) {
+
+
+    app_webgl.init();
+
 });

@@ -1719,7 +1719,7 @@ define(function (){
     exports.makeImageClickArea = function (input) {
         exports.validate_object(input, {
             x: 'number',
-            x: 'number',
+            y: 'number',
             width: 'number',
             height: 'number',
             image: 'object',

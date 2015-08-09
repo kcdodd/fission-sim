@@ -812,7 +812,7 @@ define(function (){
      }
      * @returns {Cellblock2D}
      */
-    exports.Cellblock2D = function (input) {
+    exports.makeCellblock2D = function (input) {
 
         var output = {};
 
