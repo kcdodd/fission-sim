@@ -563,27 +563,27 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
 
                 $("#reactor_ctrl_dialog").dialog("option", "position", {my: "left top", at: "right+5 top", of: "#menu"});
                 $("#reactor_ctrl_dialog").dialog("option", "width", 250);
-                $("#reactor_ctrl_dialog").dialog("option", "height", 450);
+                $("#reactor_ctrl_dialog").dialog("option", "height", 470);
 
 
                 $("#fastplotdialog").dialog("option", "position", {my: "left top", at: "right+265 top", of: "#menu"});
                 $("#fastplotdialog").dialog("option", "width", 250);
-                $("#fastplotdialog").dialog("option", "height", 280);
+                $("#fastplotdialog").dialog("option", "height", 285);
 
 
                 $("#thermalplotdialog").dialog("option", "position", {my: "left top", at: "right+525 top", of: "#menu"});
                 $("#thermalplotdialog").dialog("option", "width", 250);
-                $("#thermalplotdialog").dialog("option", "height", 280);
+                $("#thermalplotdialog").dialog("option", "height", 285);
 
 
                 $("#fissionplotdialog").dialog("option", "position", {my: "left top", at: "right+265 top+285", of: "#menu"});
                 $("#fissionplotdialog").dialog("option", "width", 250);
-                $("#fissionplotdialog").dialog("option", "height", 280);
+                $("#fissionplotdialog").dialog("option", "height", 285);
 
 
                 $("#tempplotdialog").dialog("option", "position", {my: "left top", at: "right+525 top+285", of: "#menu"});
                 $("#tempplotdialog").dialog("option", "width", 250);
-                $("#tempplotdialog").dialog("option", "height", 280);
+                $("#tempplotdialog").dialog("option", "height", 285);
 
                 $("#reactor_ctrl_dialog").dialog("open");
                 $("#fastplotdialog").dialog("open");
@@ -596,31 +596,31 @@ define(['jquery', 'reactor_webgl', 'utilities', 'jquery_ui'], function ($, react
 
                 $("#reactor_ctrl_dialog").dialog("option", "position", {my: "left top", at: "right+5 top", of: "#menu"});
                 $("#reactor_ctrl_dialog").dialog("option", "width", 250);
-                $("#reactor_ctrl_dialog").dialog("option", "height", 450);
+                $("#reactor_ctrl_dialog").dialog("option", "height", 470);
                 $("#reactor_ctrl_dialog").dialog("open");
 
 
                 $("#fastplotdialog").dialog("option", "position", {my: "left top", at: "right+265 top", of: "#menu"});
                 $("#fastplotdialog").dialog("option", "width", 450);
-                $("#fastplotdialog").dialog("option", "height", 450);
+                $("#fastplotdialog").dialog("option", "height", 460);
                 $("#fastplotdialog").dialog("open");
 
 
                 $("#thermalplotdialog").dialog("option", "position", {my: "left top", at: "right+730 top", of: "#menu"});
                 $("#thermalplotdialog").dialog("option", "width", 450);
-                $("#thermalplotdialog").dialog("option", "height", 450);
+                $("#thermalplotdialog").dialog("option", "height", 460);
                 $("#thermalplotdialog").dialog("open");
 
 
                 $("#fissionplotdialog").dialog("option", "position", {my: "left top", at: "right+265 top+465", of: "#menu"});
                 $("#fissionplotdialog").dialog("option", "width", 450);
-                $("#fissionplotdialog").dialog("option", "height", 450);
+                $("#fissionplotdialog").dialog("option", "height", 460);
                 $("#fissionplotdialog").dialog("open");
 
 
                 $("#tempplotdialog").dialog("option", "position", {my: "left top", at: "right+730 top+465", of: "#menu"});
                 $("#tempplotdialog").dialog("option", "width", 450);
-                $("#tempplotdialog").dialog("option", "height", 450);
+                $("#tempplotdialog").dialog("option", "height", 460);
                 $("#tempplotdialog").dialog("open");
             });
 
